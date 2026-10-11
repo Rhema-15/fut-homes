@@ -40,4 +40,5 @@ After launch: payments (held until the student confirms move-in, agent pays a pe
 - At the end of each session, update the Progress log below in 2-4 lines: what was built, what's left, any problems.
 
 ## Progress log
-- 2026-10-12, Day 1: Next.js + Supabase set up. /admin/login (email + password), /admin (shows email, log out), proxy.ts guards all /admin routes, home page is a "Coming soon" placeholder. Live on Vercel with env vars set; login and logout tested by Rhema. Day 2: agents + listings tables with RLS, admin forms.
+- 2026-10-12, Day 1: Next.js + Supabase set up. /admin/login (email + password), /admin (shows email, log out), proxy.ts guards all /admin routes, home page is a "Coming soon" placeholder. Live on Vercel with env vars set; login and logout tested by Rhema.
+- 2026-10-12, Day 2: SQL in supabase/migrations/001_agents_listings.sql (admins, agents, listings, listing_photos, public "photos" bucket, RLS: public reads active/published, only admins table members write). Admin panel: dashboard counts, /admin/agents (+ new), /admin/listings (+ new). Photos are compressed in the browser and uploaded straight to Storage. Not built yet: edit/delete. Next: Day 3 public home + search + listing page.
