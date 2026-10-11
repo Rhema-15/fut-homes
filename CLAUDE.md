@@ -40,4 +40,4 @@ After launch: payments (held until the student confirms move-in, agent pays a pe
 - At the end of each session, update the Progress log below in 2-4 lines: what was built, what's left, any problems.
 
 ## Progress log
-- 2026-10-12, Day 1: Next.js + Supabase set up. /admin/login (email + password), /admin (shows email, log out), proxy.ts guards all /admin routes, home page is a "Coming soon" placeholder. Next: connect Vercel, add env vars, test login live. Day 2: agents + listings tables with RLS, admin forms.
+- 2026-10-12, Day 1: Next.js + Supabase set up. /admin/login (email + password), /admin (shows email, log out), proxy.ts guards all /admin routes, home page is a "Coming soon" placeholder. Live on Vercel with env vars set; login and logout tested by Rhema. Day 2: agents + listings tables with RLS, admin forms.
