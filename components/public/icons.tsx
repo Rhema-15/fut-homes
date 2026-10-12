@@ -17,6 +17,8 @@ const PATHS = {
   ],
   play: ["poly:6 3 20 12 6 21 6 3"],
   "arrow-left": ["m12 19-7-7 7-7", "M19 12H5"],
+  "chevron-left": ["m15 18-6-6 6-6"],
+  "chevron-right": ["m9 18 6-6-6-6"],
   share: ["circle:18,5,3", "circle:6,12,3", "circle:18,19,3", "m8.59 13.51 6.83 3.98", "m15.41 6.51-6.82 3.98"],
   "message-circle": ["M7.9 20A9 9 0 1 0 4 16.1L2 22Z"],
   sliders: ["M21 4h-7", "M10 4H3", "M21 12h-9", "M8 12H3", "M21 20h-5", "M12 20H3", "M14 2v4", "M8 10v4", "M16 18v4"],

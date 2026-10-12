@@ -13,14 +13,22 @@ type Props = {
   backHref: string;
 };
 
-// Swipeable stills (CSS scroll-snap, no library). The video only
-// downloads when the student taps "Watch room video".
+// Swipeable stills (CSS scroll-snap, no library). On a computer (mouse,
+// no swiping) arrow buttons and the keyboard's arrow keys move between
+// photos. The video only downloads when the student taps "Watch room video".
 export default function Gallery({ photos, title, taken, videoPath, videoLabel, backHref }: Props) {
   const [index, setIndex] = useState(0);
   const [shared, setShared] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
   const player = useRef<HTMLDialogElement>(null);
   const [playing, setPlaying] = useState(false);
+
+  function goTo(i: number) {
+    const el = strip.current;
+    if (!el) return;
+    const next = Math.max(0, Math.min(photos.length - 1, i));
+    el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+  }
 
   async function share() {
     const url = window.location.href;
@@ -41,6 +49,17 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
     <div className="relative bg-brand-50">
       <div
         ref={strip}
+        tabIndex={photos.length > 1 ? 0 : undefined}
+        aria-label={photos.length > 1 ? "Photos. Use the arrow keys to see more." : undefined}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowRight") {
+            e.preventDefault();
+            goTo(index + 1);
+          } else if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            goTo(index - 1);
+          }
+        }}
         onScroll={(e) => {
           const el = e.currentTarget;
           setIndex(Math.round(el.scrollLeft / el.clientWidth));
@@ -59,6 +78,27 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
           />
         ))}
       </div>
+
+      {photos.length > 1 && index > 0 && (
+        <button
+          type="button"
+          onClick={() => goTo(index - 1)}
+          aria-label="Previous photo"
+          className="absolute top-1/2 left-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink shadow-float [@media(pointer:fine)]:flex"
+        >
+          <Icon name="chevron-left" size={22} />
+        </button>
+      )}
+      {photos.length > 1 && index < photos.length - 1 && (
+        <button
+          type="button"
+          onClick={() => goTo(index + 1)}
+          aria-label="Next photo"
+          className="absolute top-1/2 right-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink shadow-float [@media(pointer:fine)]:flex"
+        >
+          <Icon name="chevron-right" size={22} />
+        </button>
+      )}
 
       <a
         href={backHref}
