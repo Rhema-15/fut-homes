@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { compressImage } from "@/lib/compress-image";
+import { compressImage, videoStills } from "@/lib/compress-image";
 import { photoUrl } from "@/lib/options";
 
 type Props = {
@@ -11,12 +11,13 @@ type Props = {
   max: number;
   label: string;
   hint?: string;
+  allowVideo?: boolean; // pull still shots out of videos
   onBusyChange?: (busy: boolean) => void;
 };
 
 // Photos are shrunk in the browser and uploaded straight to Supabase
 // Storage as soon as they're picked. The form then only sends the paths.
-export default function PhotoUpload({ name, folder, max, label, hint, onBusyChange }: Props) {
+export default function PhotoUpload({ name, folder, max, label, hint, allowVideo = false, onBusyChange }: Props) {
   const [paths, setPaths] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,36 +29,66 @@ export default function PhotoUpload({ name, folder, max, label, hint, onBusyChan
 
   async function handleFiles(event: React.ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
-    const files = Array.from(input.files ?? []).slice(0, max - paths.length);
+    const files = Array.from(input.files ?? []);
     input.value = "";
     if (files.length === 0) return;
 
     setError(null);
     setBusyBoth(true);
     const supabase = createClient();
-    const uploaded: string[] = [];
+    let room = max - paths.length;
     let failed = 0;
+    let badVideos = 0;
+
+    async function upload(blob: Blob) {
+      const path = `${folder}/${crypto.randomUUID()}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("photos")
+        .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
+      if (uploadError) throw uploadError;
+      // Show each photo as soon as it's up, so slow uploads still feel alive.
+      setPaths((current) => [...current, path]);
+    }
 
     for (const file of files) {
+      if (room <= 0) break;
       try {
-        const blob = await compressImage(file);
-        const path = `${folder}/${crypto.randomUUID()}.jpg`;
-        const { error: uploadError } = await supabase.storage
-          .from("photos")
-          .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
-        if (uploadError) throw uploadError;
-        uploaded.push(path);
+        if (file.type.startsWith("video/")) {
+          if (!allowVideo) continue;
+          let stills: Blob[];
+          try {
+            stills = await videoStills(file, Math.min(6, room));
+          } catch {
+            badVideos += 1;
+            continue;
+          }
+          for (const still of stills) {
+            try {
+              await upload(still);
+              room -= 1;
+            } catch {
+              failed += 1;
+            }
+          }
+        } else {
+          await upload(await compressImage(file));
+          room -= 1;
+        }
       } catch {
         failed += 1;
       }
     }
 
-    setPaths((current) => [...current, ...uploaded]);
+    const problems: string[] = [];
     if (failed > 0) {
-      setError(
+      problems.push(
         `${failed} photo${failed > 1 ? "s" : ""} didn't upload. Check your connection, or use a JPG/PNG instead of HEIC.`,
       );
     }
+    if (badVideos > 0) {
+      problems.push("A video couldn't be read on this device. Try the MP4 from WhatsApp, or take screenshots instead.");
+    }
+    setError(problems.length ? problems.join(" ") : null);
     setBusyBoth(false);
   }
 
@@ -101,10 +132,18 @@ export default function PhotoUpload({ name, folder, max, label, hint, onBusyChan
 
       {!full && (
         <label className="cursor-pointer rounded-md border border-dashed border-neutral-400 px-3 py-4 text-center text-neutral-600">
-          {busy ? "Uploading…" : paths.length ? "Add more photos" : "Choose photo" + (max > 1 ? "s" : "")}
+          {busy
+            ? "Uploading…"
+            : paths.length
+              ? allowVideo
+                ? "Add more photos or a video"
+                : "Add more photos"
+              : allowVideo
+                ? "Choose photos or a video"
+                : "Choose photo" + (max > 1 ? "s" : "")}
           <input
             type="file"
-            accept="image/*"
+            accept={allowVideo ? "image/*,video/*" : "image/*"}
             multiple={max > 1}
             disabled={busy}
             onChange={handleFiles}

@@ -99,7 +99,8 @@ export default function ListingForm({ agents }: { agents: { id: string; name: st
         folder="listings"
         max={8}
         label="Photos (at least 1, up to 8)"
-        hint="The first photo is the cover. Photos are shrunk before upload to save data."
+        hint="Pick photos, or the agent's video and we'll pull 6 still shots from it. Remove any blurry ones. The first photo is the cover."
+        allowVideo
         onBusyChange={setUploading}
       />
 
