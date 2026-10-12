@@ -26,7 +26,10 @@ export async function login(
     if (error.code === "email_not_confirmed") {
       return { error: "This email isn't confirmed yet in Supabase." };
     }
-    return { error: `Couldn't log in: ${error.message}` };
+    // Temporary while setting up: show which Supabase URL the site uses.
+    return {
+      error: `Couldn't log in: ${error.message}. Site is using Supabase URL: "${process.env.NEXT_PUBLIC_SUPABASE_URL}"`,
+    };
   }
 
   redirect("/admin");
