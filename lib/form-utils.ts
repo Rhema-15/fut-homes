@@ -14,3 +14,8 @@ export function pathList(formData: FormData, key: string): string[] {
     return [];
   }
 }
+
+export function videoPath(formData: FormData, key: string): string | null {
+  const value = String(formData.get(key) ?? "");
+  return /^listings\/[\w-]+\.(mp4|webm|mov)$/.test(value) ? value : null;
+}

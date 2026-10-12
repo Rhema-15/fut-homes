@@ -99,7 +99,7 @@ export default function ListingForm({ agents }: { agents: { id: string; name: st
         folder="listings"
         max={8}
         label="Photos (at least 1, up to 8)"
-        hint="Pick photos, or the agent's video and we'll pull 6 still shots from it. Remove any blurry ones. The first photo is the cover."
+        hint="Pick photos and/or the agent's video. A video gives 6 still shots (remove blurry ones) and is attached for students to watch. The first photo is the cover."
         allowVideo
         onBusyChange={setUploading}
       />
@@ -115,7 +115,7 @@ export default function ListingForm({ agents }: { agents: { id: string; name: st
         disabled={pending || uploading}
         className="rounded-md bg-neutral-900 px-4 py-2 font-medium text-white disabled:opacity-60"
       >
-        {uploading ? "Waiting for photos…" : pending ? "Saving…" : "Save listing"}
+        {uploading ? "Waiting for uploads…" : pending ? "Saving…" : "Save listing"}
       </button>
     </form>
   );

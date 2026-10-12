@@ -14,6 +14,7 @@ type Row = {
   area: string | null;
   price: number;
   status: "available" | "taken";
+  video_path: string | null;
   agents: { name: string } | null;
   listing_photos: { path: string; position: number }[];
 };
@@ -22,7 +23,7 @@ export default async function ListingsPage() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("listings")
-    .select("id, title, room_type, campus, area, price, status, agents(name), listing_photos(path, position)")
+    .select("id, title, room_type, campus, area, price, status, video_path, agents(name), listing_photos(path, position)")
     .order("created_at", { ascending: false });
   const listings = (data ?? []) as unknown as Row[];
 
@@ -57,6 +58,7 @@ export default async function ListingsPage() {
                 </p>
                 <p className="text-sm">
                   {formatNaira(l.price)}/yr · <span className="text-neutral-500">{l.agents?.name}</span>
+                  {l.video_path && <span className="ml-2 text-xs text-neutral-500">▶ video</span>}
                   {l.status === "taken" && <span className="ml-2 text-xs text-red-600">Taken</span>}
                 </p>
               </div>

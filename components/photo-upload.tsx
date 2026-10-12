@@ -3,15 +3,18 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { compressImage, videoStills } from "@/lib/compress-image";
-import { photoUrl } from "@/lib/options";
+import { MAX_VIDEO_BYTES, compressVideo } from "@/lib/compress-video";
+import { photoUrl, videoUrl } from "@/lib/options";
 
 type Props = {
-  name: string; // form field that receives the uploaded paths (JSON array)
+  name: string; // form field that receives the uploaded photo paths (JSON array)
   folder: "agents" | "listings";
   max: number;
   label: string;
   hint?: string;
-  allowVideo?: boolean; // pull still shots out of videos
+  // Listings only: a picked video gives still shots for photos AND is
+  // shrunk and attached as the listing's video (form field "video").
+  allowVideo?: boolean;
   onBusyChange?: (busy: boolean) => void;
 };
 
@@ -19,12 +22,14 @@ type Props = {
 // Storage as soon as they're picked. The form then only sends the paths.
 export default function PhotoUpload({ name, folder, max, label, hint, allowVideo = false, onBusyChange }: Props) {
   const [paths, setPaths] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [video, setVideo] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const busy = status !== null;
 
-  function setBusyBoth(value: boolean) {
-    setBusy(value);
-    onBusyChange?.(value);
+  function setBusyStatus(value: string | null) {
+    setStatus(value);
+    onBusyChange?.(value !== null);
   }
 
   async function handleFiles(event: React.ChangeEvent<HTMLInputElement>) {
@@ -34,13 +39,14 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
     if (files.length === 0) return;
 
     setError(null);
-    setBusyBoth(true);
+    setBusyStatus("Uploading…");
     const supabase = createClient();
     let room = max - paths.length;
+    const problems: string[] = [];
     let failed = 0;
-    let badVideos = 0;
+    let videoDone = false;
 
-    async function upload(blob: Blob) {
+    async function uploadPhoto(blob: Blob) {
       const path = `${folder}/${crypto.randomUUID()}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from("photos")
@@ -50,46 +56,70 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
       setPaths((current) => [...current, path]);
     }
 
-    for (const file of files) {
-      if (room <= 0) break;
-      try {
-        if (file.type.startsWith("video/")) {
-          if (!allowVideo) continue;
-          let stills: Blob[];
-          try {
-            stills = await videoStills(file, Math.min(6, room));
-          } catch {
-            badVideos += 1;
-            continue;
-          }
+    async function handleVideo(file: File) {
+      // 1. Still shots for the photos.
+      if (room > 0) {
+        setBusyStatus("Pulling photos from video…");
+        try {
+          const stills = await videoStills(file, Math.min(6, room));
           for (const still of stills) {
             try {
-              await upload(still);
+              await uploadPhoto(still);
               room -= 1;
             } catch {
               failed += 1;
             }
           }
-        } else {
-          await upload(await compressImage(file));
-          room -= 1;
+        } catch {
+          problems.push("Couldn't read that video on this device. Try the MP4 from WhatsApp.");
+          return;
         }
+      }
+
+      // 2. The video itself (one per listing; a new one replaces the old).
+      if (videoDone) return;
+      videoDone = true;
+      setBusyStatus("Shrinking video… keep this tab open");
+      const result = await compressVideo(file, (f) =>
+        setBusyStatus(`Shrinking video… ${Math.round(f * 100)}% (keep this tab open)`),
+      );
+      if (result.blob.size > MAX_VIDEO_BYTES) {
+        problems.push("The video is too big (over 25MB). Photos were added; send a shorter video.");
+        return;
+      }
+      setBusyStatus("Uploading video…");
+      const path = `listings/${crypto.randomUUID()}.${result.extension}`;
+      const { error: uploadError } = await supabase.storage
+        .from("videos")
+        .upload(path, result.blob, { contentType: result.contentType, cacheControl: "31536000" });
+      if (uploadError) {
+        problems.push(`The video didn't upload (${uploadError.message}). Photos were still added.`);
+        return;
+      }
+      setVideo(path);
+    }
+
+    for (const file of files) {
+      if (file.type.startsWith("video/")) {
+        if (allowVideo) await handleVideo(file);
+        continue;
+      }
+      if (room <= 0) continue;
+      try {
+        await uploadPhoto(await compressImage(file));
+        room -= 1;
       } catch {
         failed += 1;
       }
     }
 
-    const problems: string[] = [];
     if (failed > 0) {
-      problems.push(
+      problems.unshift(
         `${failed} photo${failed > 1 ? "s" : ""} didn't upload. Check your connection, or use a JPG/PNG instead of HEIC.`,
       );
     }
-    if (badVideos > 0) {
-      problems.push("A video couldn't be read on this device. Try the MP4 from WhatsApp, or take screenshots instead.");
-    }
     setError(problems.length ? problems.join(" ") : null);
-    setBusyBoth(false);
+    setBusyStatus(null);
   }
 
   function remove(path: string) {
@@ -97,6 +127,13 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
   }
 
   const full = paths.length >= max;
+  const pickLabel = paths.length
+    ? allowVideo
+      ? "Add more photos or a video"
+      : "Add more photos"
+    : allowVideo
+      ? "Choose photos or a video"
+      : "Choose photo" + (max > 1 ? "s" : "");
 
   return (
     <div className="flex flex-col gap-2 text-sm">
@@ -130,20 +167,22 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
         </ul>
       )}
 
-      {!full && (
+      {video && (
+        <div className="flex flex-col gap-1">
+          <span className="text-neutral-500">Room video</span>
+          <video src={videoUrl(video)} controls preload="metadata" className="w-full rounded-md bg-black" />
+          <button type="button" onClick={() => setVideo(null)} className="self-start text-xs underline">
+            Remove video
+          </button>
+        </div>
+      )}
+
+      {(!full || allowVideo) && (
         <label className="cursor-pointer rounded-md border border-dashed border-neutral-400 px-3 py-4 text-center text-neutral-600">
-          {busy
-            ? "Uploading…"
-            : paths.length
-              ? allowVideo
-                ? "Add more photos or a video"
-                : "Add more photos"
-              : allowVideo
-                ? "Choose photos or a video"
-                : "Choose photo" + (max > 1 ? "s" : "")}
+          {status ?? (full ? "Photos full. Add a video" : pickLabel)}
           <input
             type="file"
-            accept={allowVideo ? "image/*,video/*" : "image/*"}
+            accept={allowVideo ? (full ? "video/*" : "image/*,video/*") : "image/*"}
             multiple={max > 1}
             disabled={busy}
             onChange={handleFiles}
@@ -159,6 +198,7 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
       )}
 
       <input type="hidden" name={name} value={JSON.stringify(paths)} />
+      {allowVideo && <input type="hidden" name="video" value={video ?? ""} />}
     </div>
   );
 }

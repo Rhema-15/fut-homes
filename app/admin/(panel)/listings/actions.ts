@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { type FormState, pathList, text } from "@/lib/form-utils";
+import { type FormState, pathList, text, videoPath } from "@/lib/form-utils";
 import { CAMPUSES, ROOM_TYPES, isOneOf } from "@/lib/options";
 
 export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -16,6 +16,7 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   const feesNote = text(formData, "fees_note");
   const description = text(formData, "description");
   const photos = pathList(formData, "photos");
+  const video = videoPath(formData, "video");
 
   if (!agentId) return { error: "Pick the agent for this room." };
   if (!title) return { error: "Give the listing a short title." };
@@ -37,6 +38,7 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
       walk_minutes: walkDigits ? Number(walkDigits) : null,
       fees_note: feesNote || null,
       description: description || null,
+      video_path: video,
     })
     .select("id")
     .single();
