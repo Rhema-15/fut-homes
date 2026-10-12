@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { Icon, type IconName } from "@/components/public/icons";
 import { ListingGrid } from "@/components/public/listing-card";
 import SearchForm from "@/components/public/search-form";
@@ -14,6 +15,8 @@ const PROMISES: { icon: IconName; label: string }[] = [
 ];
 
 export default async function HomePage() {
+  // Render per request (must happen outside the catch below).
+  await connection();
   // If rooms can't load, still show the page with a "coming soon" note.
   const rooms = await newestListings(6).catch((e) => {
     console.error(e);
