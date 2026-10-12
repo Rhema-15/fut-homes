@@ -28,7 +28,7 @@ const REASONS: { icon: IconName; title: string; body: string }[] = [
 const STEPS = [
   "Message us on WhatsApp with your full name (as on your ID), the areas you cover, and a clear photo of your ID.",
   "We check it and reply on WhatsApp.",
-  "Send your room videos and details, and we post them with your ID verified badge.",
+  "For each room, send a photo of the building from outside, a video of the room, and the price. We post it with your ID verified badge.",
 ];
 
 const MESSAGE = `Hi FUT Homes, I'm an agent and I'd like to list my rooms.

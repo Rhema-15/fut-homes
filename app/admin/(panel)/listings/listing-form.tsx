@@ -124,7 +124,7 @@ export default function ListingForm({
         folder="listings"
         max={8}
         label="Photos (at least 1, up to 8)"
-        hint="Pick photos and/or the agent's video. A video gives 6 still shots (remove blurry ones) and is attached for students to watch. The first photo is the cover."
+        hint="Add the photo of the building first: it becomes the cover. Then the agent's video: it gives 6 still shots (remove blurry ones) and is attached for students to watch. Use Make cover to change the cover."
         allowVideo
         onBusyChange={setUploading}
         initialPaths={listing?.photos}
