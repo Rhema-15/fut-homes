@@ -7,6 +7,7 @@ type Props = {
   agentName: string;
   isTrusted: boolean;
   checkedOn: string; // ISO date the agent was added (ID checked)
+  listingCode?: string;
   size?: "sm" | "md";
 };
 
@@ -14,7 +15,7 @@ const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "sh
 
 // The badge is a button: tapping it explains exactly what was checked.
 // It never claims more than Rhema actually checked.
-export default function AgentBadge({ agentName, isTrusted, checkedOn }: Props) {
+export default function AgentBadge({ agentName, isTrusted, checkedOn, listingCode }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const name = agentName.trim().split(/\s+/)[0];
@@ -65,14 +66,22 @@ export default function AgentBadge({ agentName, isTrusted, checkedOn }: Props) {
             <strong className="font-semibold text-warning">Still, never pay before you inspect.</strong> A badge shows who
             someone is, not that a deal is safe.
           </p>
-          <form method="dialog">
-            <button
-              type="submit"
-              className="flex h-12 w-full items-center justify-center rounded-md bg-brand-700 font-semibold text-white active:bg-brand-900"
+          <div className="flex flex-col gap-1">
+            <form method="dialog">
+              <button
+                type="submit"
+                className="flex h-12 w-full items-center justify-center rounded-md bg-brand-700 font-semibold text-white active:bg-brand-900"
+              >
+                Got it
+              </button>
+            </form>
+            <a
+              href={`/report?agent=${encodeURIComponent(name)}${listingCode ? `&listing=${encodeURIComponent("#" + listingCode)}` : ""}`}
+              className="flex h-11 items-center justify-center text-sm font-semibold text-error"
             >
-              Got it
-            </button>
-          </form>
+              Report this agent
+            </a>
+          </div>
         </div>
       </dialog>
     </>

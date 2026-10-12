@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { PublicListing } from "@/lib/public-data";
-import { ROOM_TYPES, firstName, formatDistance, formatDuration, formatNaira, photoUrl } from "@/lib/options";
+import { ROOM_TYPES, firstName, listingCode, formatDistance, formatDuration, formatNaira, photoUrl } from "@/lib/options";
 import AgentBadge from "./agent-badge";
 import { Icon } from "./icons";
 
@@ -75,6 +75,7 @@ export default function ListingCard({ listing, eager = false }: { listing: Publi
               agentName={listing.agent.name}
               isTrusted={listing.agent.is_trusted}
               checkedOn={listing.agent.created_at}
+              listingCode={listingCode(listing.id)}
             />
           </span>
         </div>

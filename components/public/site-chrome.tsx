@@ -11,10 +11,10 @@ export function SiteHeader() {
           fut homes
         </Link>
         <Link
-          href="/how-it-works"
+          href="/for-agents"
           className="flex min-h-11 items-center text-sm font-semibold text-brand-700 underline-offset-4 hover:underline"
         >
-          How it works
+          For agents
         </Link>
       </div>
     </header>
@@ -32,6 +32,12 @@ export function SiteFooter() {
           </Link>
           <Link href="/how-it-works#safety" className="underline-offset-4 hover:underline">
             Safety tips
+          </Link>
+          <Link href="/for-agents" className="underline-offset-4 hover:underline">
+            For agents
+          </Link>
+          <Link href="/report" className="underline-offset-4 hover:underline">
+            Report a problem
           </Link>
         </nav>
         <p className="text-xs leading-4 text-on-dark-muted">

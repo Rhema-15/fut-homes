@@ -23,14 +23,29 @@ type Props = {
   // shrunk and attached as the listing's video (form field "video").
   allowVideo?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  // When editing: what's already saved.
+  initialPaths?: string[];
+  initialVideo?: string | null;
+  initialVideoSeconds?: number | null;
 };
 
 // Photos are shrunk in the browser and uploaded straight to Supabase
 // Storage as soon as they're picked. The form then only sends the paths.
-export default function PhotoUpload({ name, folder, max, label, hint, allowVideo = false, onBusyChange }: Props) {
-  const [paths, setPaths] = useState<string[]>([]);
-  const [video, setVideo] = useState<string | null>(null);
-  const [videoSeconds, setVideoSeconds] = useState<number | null>(null);
+export default function PhotoUpload({
+  name,
+  folder,
+  max,
+  label,
+  hint,
+  allowVideo = false,
+  onBusyChange,
+  initialPaths = [],
+  initialVideo = null,
+  initialVideoSeconds = null,
+}: Props) {
+  const [paths, setPaths] = useState<string[]>(initialPaths);
+  const [video, setVideo] = useState<string | null>(initialVideo);
+  const [videoSeconds, setVideoSeconds] = useState<number | null>(initialVideoSeconds);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const busy = status !== null;
@@ -161,6 +176,10 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
     setPaths((current) => current.filter((p) => p !== path));
   }
 
+  function makeCover(path: string) {
+    setPaths((current) => [path, ...current.filter((p) => p !== path)]);
+  }
+
   const full = paths.length >= max;
   const pickLabel = paths.length
     ? allowVideo
@@ -189,6 +208,15 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
                 <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
                   Cover
                 </span>
+              )}
+              {i > 0 && (
+                <button
+                  type="button"
+                  onClick={() => makeCover(path)}
+                  className="absolute bottom-1 left-1 rounded bg-white/90 px-1.5 py-0.5 text-xs"
+                >
+                  Make cover
+                </button>
               )}
               <button
                 type="button"

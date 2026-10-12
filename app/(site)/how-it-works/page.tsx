@@ -72,6 +72,9 @@ export default function HowItWorksPage() {
             </li>
           ))}
         </ul>
+        <Link href="/report" className="inline-flex min-h-11 items-center text-sm font-semibold text-error">
+          Something feels wrong? Report it
+        </Link>
       </section>
 
       <section className="flex flex-col gap-3">

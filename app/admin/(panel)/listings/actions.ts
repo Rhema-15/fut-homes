@@ -5,7 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { type FormState, pathList, saveError, text, videoPath } from "@/lib/form-utils";
 import { CAMPUSES, ROOM_TYPES, isOneOf } from "@/lib/options";
 
-export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
+type Parsed =
+  | { error: string }
+  | {
+      fields: Record<string, string | number | null>;
+      photos: string[];
+    };
+
+function parse(formData: FormData): Parsed {
   const agentId = text(formData, "agent_id");
   const title = text(formData, "title");
   const roomType = text(formData, "room_type");
@@ -30,10 +37,9 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   }
   if (photos.length === 0) return { error: "Add at least one photo." };
 
-  const supabase = await createClient();
-  const { data: listing, error } = await supabase
-    .from("listings")
-    .insert({
+  return {
+    photos,
+    fields: {
       agent_id: agentId,
       title,
       room_type: roomType,
@@ -45,15 +51,21 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
       description: description || null,
       video_path: video,
       video_seconds: video && videoSecondsDigits ? Number(videoSecondsDigits) : null,
-    })
-    .select("id")
-    .single();
+    },
+  };
+}
 
+export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = parse(formData);
+  if ("error" in parsed) return parsed;
+
+  const supabase = await createClient();
+  const { data: listing, error } = await supabase.from("listings").insert(parsed.fields).select("id").single();
   if (error || !listing) return { error: saveError("listing", error?.message ?? "unknown error") };
 
   const { error: photoError } = await supabase
     .from("listing_photos")
-    .insert(photos.map((path, position) => ({ listing_id: listing.id, path, position })));
+    .insert(parsed.photos.map((path, position) => ({ listing_id: listing.id, path, position })));
 
   if (photoError) {
     // Don't leave a listing without photos behind.
@@ -61,5 +73,72 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
     return { error: saveError("photos", photoError.message) };
   }
 
+  redirect("/admin/listings");
+}
+
+export async function updateListing(id: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const parsed = parse(formData);
+  if ("error" in parsed) return parsed;
+
+  const supabase = await createClient();
+  const { data: before } = await supabase
+    .from("listings")
+    .select("video_path, listing_photos(path)")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase.from("listings").update(parsed.fields).eq("id", id);
+  if (error) return { error: saveError("listing", error.message) };
+
+  // Replace the photo list with what's on the form now.
+  const { error: delError } = await supabase.from("listing_photos").delete().eq("listing_id", id);
+  if (delError) return { error: saveError("photos", delError.message) };
+  const { error: photoError } = await supabase
+    .from("listing_photos")
+    .insert(parsed.photos.map((path, position) => ({ listing_id: id, path, position })));
+  if (photoError) return { error: saveError("photos", photoError.message) };
+
+  // Tidy up files that were removed, so storage doesn't fill up.
+  if (before) {
+    const oldPhotos = (before.listing_photos as { path: string }[]).map((p) => p.path);
+    const gone = oldPhotos.filter((p) => !parsed.photos.includes(p));
+    if (gone.length) await supabase.storage.from("photos").remove(gone);
+    if (before.video_path && before.video_path !== parsed.fields.video_path) {
+      await supabase.storage.from("videos").remove([before.video_path]);
+    }
+  }
+
+  redirect("/admin/listings");
+}
+
+export async function setListingStatus(id: string, status: "available" | "taken") {
+  const supabase = await createClient();
+  await supabase
+    .from("listings")
+    .update({ status, taken_at: status === "taken" ? new Date().toISOString() : null })
+    .eq("id", id);
+  redirect("/admin/listings");
+}
+
+export async function setListingPublished(id: string, isPublished: boolean) {
+  const supabase = await createClient();
+  await supabase.from("listings").update({ is_published: isPublished }).eq("id", id);
+  redirect(`/admin/listings/${id}`);
+}
+
+export async function deleteListing(id: string) {
+  const supabase = await createClient();
+  const { data: listing } = await supabase
+    .from("listings")
+    .select("video_path, listing_photos(path)")
+    .eq("id", id)
+    .single();
+
+  const { error } = await supabase.from("listings").delete().eq("id", id);
+  if (!error && listing) {
+    const photos = (listing.listing_photos as { path: string }[]).map((p) => p.path);
+    if (photos.length) await supabase.storage.from("photos").remove(photos);
+    if (listing.video_path) await supabase.storage.from("videos").remove([listing.video_path]);
+  }
   redirect("/admin/listings");
 }

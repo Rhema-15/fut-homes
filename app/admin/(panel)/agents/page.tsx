@@ -40,7 +40,9 @@ export default async function AgentsPage() {
               )}
               <div className="min-w-0 flex-1">
                 <p className="font-medium">
-                  {agent.name}
+                  <Link href={`/admin/agents/${agent.id}`} className="hover:underline">
+                    {agent.name}
+                  </Link>
                   {!agent.is_active && <span className="ml-2 text-xs text-red-600">(hidden)</span>}
                 </p>
                 <p className="text-sm text-neutral-500">
@@ -49,6 +51,9 @@ export default async function AgentsPage() {
                   {count === 1 ? "" : "s"}
                 </p>
               </div>
+              <Link href={`/admin/agents/${agent.id}`} className="shrink-0 text-sm underline">
+                Edit
+              </Link>
             </li>
           );
         })}

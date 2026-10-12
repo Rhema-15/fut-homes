@@ -103,6 +103,10 @@ export async function searchListings(filters: Filters, limit = 60): Promise<Publ
   if (filters.type) query = query.eq("room_type", filters.type);
   if (filters.max) query = query.lte("price", filters.max);
 
+  // Taken rooms stay visible (greyed out) for 7 days, then drop off.
+  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  query = query.or(`status.eq.available,taken_at.gt.${weekAgo}`);
+
   // Taken rooms always go to the bottom.
   query = query.order("status", { ascending: true });
   if (filters.sort === "price") query = query.order("price", { ascending: true });

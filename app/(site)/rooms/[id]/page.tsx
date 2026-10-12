@@ -131,7 +131,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
             <AgentAvatar name={listing.agent.name} photo={listing.agent.photo_path} size={48} />
             <div className="flex flex-col items-start gap-1">
               <span className="font-semibold">{firstName(listing.agent.name)}</span>
-              <AgentBadge agentName={listing.agent.name} isTrusted={listing.agent.is_trusted} checkedOn={listing.agent.created_at} />
+              <AgentBadge agentName={listing.agent.name} isTrusted={listing.agent.is_trusted} checkedOn={listing.agent.created_at} listingCode={code} />
             </div>
           </div>
           <p className="text-sm text-muted">
@@ -140,8 +140,21 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         </div>
       </section>
 
-      <section className="px-4 pt-6 pb-8 min-[768px]:px-0">
+      <section className="px-4 pt-6 min-[768px]:px-0">
         <SafetyWarning />
+      </section>
+
+      <section className="px-4 pt-2 pb-8 min-[768px]:px-0">
+        <Link
+          href={`/report?listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-error"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+            <path d="M4 22v-7" />
+          </svg>
+          Report this listing
+        </Link>
       </section>
 
       {!taken && (
