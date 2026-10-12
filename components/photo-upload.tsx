@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { compressImage, videoStills } from "@/lib/compress-image";
+import { type ImageResult, compressImage, videoStills } from "@/lib/compress-image";
 import { MAX_VIDEO_BYTES, compressVideo } from "@/lib/compress-video";
 import { photoUrl, videoUrl } from "@/lib/options";
+
+const LOGIN_EXPIRED =
+  "Your login has expired. Click Log out at the top, log back in, then add the photos again.";
+
+function isLoginError(message: string) {
+  return /jwt|token|unauthori[sz]ed|expired|signature/i.test(message);
+}
 
 type Props = {
   name: string; // form field that receives the uploaded photo paths (JSON array)
@@ -23,6 +30,7 @@ type Props = {
 export default function PhotoUpload({ name, folder, max, label, hint, allowVideo = false, onBusyChange }: Props) {
   const [paths, setPaths] = useState<string[]>([]);
   const [video, setVideo] = useState<string | null>(null);
+  const [videoSeconds, setVideoSeconds] = useState<number | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const busy = status !== null;
@@ -41,17 +49,31 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
     setError(null);
     setBusyStatus("Uploading…");
     const supabase = createClient();
+
+    // Make sure the login is still fresh before uploading. An old login
+    // (tab left open for hours) is what causes "JWT failed verification".
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user) {
+      setError(LOGIN_EXPIRED);
+      setBusyStatus(null);
+      return;
+    }
+
     let room = max - paths.length;
     const problems: string[] = [];
     let failed = 0;
     let videoDone = false;
+    let loginExpired = false;
 
-    async function uploadPhoto(blob: Blob) {
-      const path = `${folder}/${crypto.randomUUID()}.jpg`;
+    async function uploadPhoto(image: ImageResult) {
+      const path = `${folder}/${crypto.randomUUID()}.${image.extension}`;
       const { error: uploadError } = await supabase.storage
         .from("photos")
-        .upload(path, blob, { contentType: "image/jpeg", cacheControl: "31536000" });
-      if (uploadError) throw uploadError;
+        .upload(path, image.blob, { contentType: image.contentType, cacheControl: "31536000" });
+      if (uploadError) {
+        if (isLoginError(uploadError.message)) loginExpired = true;
+        throw uploadError;
+      }
       // Show each photo as soon as it's up, so slow uploads still feel alive.
       setPaths((current) => [...current, path]);
     }
@@ -61,7 +83,8 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
       if (room > 0) {
         setBusyStatus("Pulling photos from video…");
         try {
-          const stills = await videoStills(file, Math.min(6, room));
+          const { stills, seconds } = await videoStills(file, Math.min(6, room));
+          setVideoSeconds(seconds);
           for (const still of stills) {
             try {
               await uploadPhoto(still);
@@ -73,6 +96,15 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
         } catch {
           problems.push("Couldn't read that video on this device. Try the MP4 from WhatsApp.");
           return;
+        }
+      }
+
+      if (room <= 0) {
+        try {
+          const { seconds } = await videoStills(file, 0);
+          setVideoSeconds(seconds);
+        } catch {
+          /* length is optional */
         }
       }
 
@@ -93,7 +125,8 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
         .from("videos")
         .upload(path, result.blob, { contentType: result.contentType, cacheControl: "31536000" });
       if (uploadError) {
-        problems.push(`The video didn't upload (${uploadError.message}). Photos were still added.`);
+        if (isLoginError(uploadError.message)) loginExpired = true;
+        else problems.push(`The video didn't upload (${uploadError.message}). Photos were still added.`);
         return;
       }
       setVideo(path);
@@ -113,7 +146,9 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
       }
     }
 
-    if (failed > 0) {
+    if (loginExpired) {
+      problems.unshift(LOGIN_EXPIRED);
+    } else if (failed > 0) {
       problems.unshift(
         `${failed} photo${failed > 1 ? "s" : ""} didn't upload. Check your connection, or use a JPG/PNG instead of HEIC.`,
       );
@@ -171,7 +206,7 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
         <div className="flex flex-col gap-1">
           <span className="text-neutral-500">Room video</span>
           <video src={videoUrl(video)} controls preload="metadata" className="w-full rounded-md bg-black" />
-          <button type="button" onClick={() => setVideo(null)} className="self-start text-xs underline">
+          <button type="button" onClick={() => { setVideo(null); setVideoSeconds(null); }} className="self-start text-xs underline">
             Remove video
           </button>
         </div>
@@ -199,6 +234,7 @@ export default function PhotoUpload({ name, folder, max, label, hint, allowVideo
 
       <input type="hidden" name={name} value={JSON.stringify(paths)} />
       {allowVideo && <input type="hidden" name="video" value={video ?? ""} />}
+      {allowVideo && <input type="hidden" name="video_seconds" value={video && videoSeconds ? String(videoSeconds) : ""} />}
     </div>
   );
 }

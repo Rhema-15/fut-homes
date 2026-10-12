@@ -1,18 +1,34 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
+// latin-ext carries the ₦ sign.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "600", "800"],
+  variable: "--font-jakarta",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "FUT Homes",
-  description: "Verified off-campus accommodation for FUTMINNA students.",
+  metadataBase: new URL("https://fut-homes.vercel.app"),
+  title: {
+    default: "FUT Homes · Rooms near FUTMINNA from ID-checked agents",
+    template: "%s · FUT Homes",
+  },
+  description:
+    "Find a room near Bosso or Gidan Kwano campus. Real videos, ID-checked agents, and you pay only after you inspect.",
+  openGraph: { siteName: "FUT Homes", locale: "en_NG", type: "website" },
 };
 
-// System fonts only: nothing extra to download on slow data.
+export const viewport: Viewport = {
+  themeColor: "#4A2C8F",
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-white text-neutral-900">
-        {children}
-      </body>
+    <html lang="en-NG" className={`${jakarta.variable} h-full`}>
+      <body className="flex min-h-full flex-col bg-bg font-sans text-ink">{children}</body>
     </html>
   );
 }

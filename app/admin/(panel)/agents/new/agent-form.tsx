@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from "react";
 import PhotoUpload from "@/components/photo-upload";
-import { VERIFICATION_LEVELS } from "@/lib/options";
 import type { FormState } from "@/lib/form-utils";
 import { createAgent } from "../actions";
 
@@ -25,15 +24,15 @@ export default function AgentForm() {
         <input name="whatsapp" type="tel" inputMode="tel" placeholder="0803 123 4567" required className={input} />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Verification level
-        <select name="verification_level" defaultValue="id_verified" className={input}>
-          {Object.entries(VERIFICATION_LEVELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
+      <label className="flex items-start gap-3 rounded-md border border-neutral-300 p-3 text-sm">
+        <input name="is_trusted" type="checkbox" className="mt-1 h-4 w-4" />
+        <span>
+          <span className="font-medium">Trusted agent</span>
+          <span className="block text-neutral-500">
+            Tick only if past students you found yourself confirmed they rented through this agent. Every agent is
+            &ldquo;ID verified&rdquo; by default.
+          </span>
+        </span>
       </label>
 
       <PhotoUpload

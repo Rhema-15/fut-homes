@@ -69,8 +69,8 @@ export default function ListingForm({ agents }: { agents: { id: string; name: st
           <input name="area" placeholder="Tunga Goro" className={input} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          Walk to campus (mins)
-          <input name="walk_minutes" type="number" inputMode="numeric" min={0} placeholder="10" className={input} />
+          Distance to campus (km)
+          <input name="distance_km" inputMode="decimal" placeholder="1.2" className={input} />
         </label>
       </div>
 

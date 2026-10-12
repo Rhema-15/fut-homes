@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { VERIFICATION_LEVELS, type VerificationLevel, formatWhatsapp, photoUrl } from "@/lib/options";
+import { formatWhatsapp, photoUrl } from "@/lib/options";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Agents · FUT Homes admin", robots: { index: false } };
@@ -10,7 +10,7 @@ export default async function AgentsPage() {
   const supabase = await createClient();
   const { data: agents, error } = await supabase
     .from("agents")
-    .select("id, name, whatsapp, photo_path, verification_level, is_active, listings(count)")
+    .select("id, name, whatsapp, photo_path, is_trusted, is_active, listings(count)")
     .order("created_at", { ascending: false });
 
   return (
@@ -45,7 +45,7 @@ export default async function AgentsPage() {
                 </p>
                 <p className="text-sm text-neutral-500">
                   {formatWhatsapp(agent.whatsapp)} ·{" "}
-                  {VERIFICATION_LEVELS[agent.verification_level as VerificationLevel]} · {count} listing
+                  {agent.is_trusted ? "Trusted agent" : "ID verified"} · {count} listing
                   {count === 1 ? "" : "s"}
                 </p>
               </div>

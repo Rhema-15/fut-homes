@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { type FormState, pathList, text, videoPath } from "@/lib/form-utils";
+import { type FormState, pathList, saveError, text, videoPath } from "@/lib/form-utils";
 import { CAMPUSES, ROOM_TYPES, isOneOf } from "@/lib/options";
 
 export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -12,7 +12,9 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   const campus = text(formData, "campus");
   const area = text(formData, "area");
   const priceDigits = text(formData, "price").replace(/\D/g, "");
-  const walkDigits = text(formData, "walk_minutes").replace(/\D/g, "");
+  const distanceText = text(formData, "distance_km").replace(",", ".");
+  const distance = distanceText ? Number(distanceText) : null;
+  const videoSecondsDigits = text(formData, "video_seconds").replace(/\D/g, "");
   const feesNote = text(formData, "fees_note");
   const description = text(formData, "description");
   const photos = pathList(formData, "photos");
@@ -23,6 +25,9 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   if (!isOneOf(ROOM_TYPES, roomType)) return { error: "Pick a room type." };
   if (!isOneOf(CAMPUSES, campus)) return { error: "Pick the nearest campus." };
   if (!priceDigits) return { error: "Enter the rent per year." };
+  if (distance !== null && (!Number.isFinite(distance) || distance < 0 || distance > 50)) {
+    return { error: "Distance should be in km, like 1.2." };
+  }
   if (photos.length === 0) return { error: "Add at least one photo." };
 
   const supabase = await createClient();
@@ -35,15 +40,16 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
       campus,
       area: area || null,
       price: Number(priceDigits),
-      walk_minutes: walkDigits ? Number(walkDigits) : null,
+      distance_km: distance === null ? null : Math.round(distance * 10) / 10,
       fees_note: feesNote || null,
       description: description || null,
       video_path: video,
+      video_seconds: video && videoSecondsDigits ? Number(videoSecondsDigits) : null,
     })
     .select("id")
     .single();
 
-  if (error || !listing) return { error: `Couldn't save the listing: ${error?.message ?? "unknown error"}` };
+  if (error || !listing) return { error: saveError("listing", error?.message ?? "unknown error") };
 
   const { error: photoError } = await supabase
     .from("listing_photos")
@@ -52,7 +58,7 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   if (photoError) {
     // Don't leave a listing without photos behind.
     await supabase.from("listings").delete().eq("id", listing.id);
-    return { error: `Couldn't save the photos: ${photoError.message}` };
+    return { error: saveError("photos", photoError.message) };
   }
 
   redirect("/admin/listings");

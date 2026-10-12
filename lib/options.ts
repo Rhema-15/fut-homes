@@ -43,7 +43,31 @@ export function formatWhatsapp(digits: string): string {
 }
 
 export function formatNaira(amount: number): string {
-  return "₦" + amount.toLocaleString("en-NG");
+  return "₦" + Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+export const CAMPUS_LONG = {
+  bosso: "Bosso campus",
+  gidan_kwano: "Gidan Kwano campus",
+} as const;
+
+export function formatDistance(km: number | null, campus: Campus): string | null {
+  if (km === null || km === undefined) return null;
+  return `${Number(km).toFixed(1)} km to ${CAMPUS_LONG[campus]}`;
+}
+
+export function formatDuration(seconds: number | null): string | null {
+  if (!seconds) return null;
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+export function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] ?? name;
+}
+
+// Short, readable listing number for WhatsApp messages and reports.
+export function listingCode(id: string): string {
+  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
 }
 
 export function photoUrl(path: string): string {

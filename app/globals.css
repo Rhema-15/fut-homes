@@ -1,5 +1,59 @@
 @import "tailwindcss";
 
+/* FUT Homes design tokens (brand kit v2). Every colour pair used for
+   text passes WCAG AA; see the brand kit for the contrast notes. */
+@theme {
+  --color-brand-700: #4a2c8f;
+  --color-brand-900: #2e1a5e;
+  --color-brand-50: #efeaf8;
+  --color-bg: #faf8fc;
+  --color-accent-500: #f2a93b;
+  --color-accent-text: #8a5a00;
+  --color-ink: #1c1530;
+  --color-slate: #4a4458;
+  --color-muted: #625c70;
+  --color-line: #e4e0ec;
+  --color-control-border: #8a8299;
+  --color-on-dark-muted: #d9d2ea;
+  --color-success: #1e7046;
+  --color-success-50: #e6f4ec;
+  --color-whatsapp: #167a47;
+  --color-whatsapp-pressed: #105c35;
+  --color-warning: #7a4f00;
+  --color-warning-50: #fff4d6;
+  --color-warning-border: #e0a800;
+  --color-error: #b42318;
+  --color-error-50: #fdecea;
+  --color-scrim: rgb(28 21 48 / 0.75);
+  --color-overlay: rgb(28 21 48 / 0.55);
+
+  --font-sans: var(--font-jakarta), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-card: 0 1px 2px rgb(28 21 48 / 0.06);
+  --shadow-float: 0 1px 2px rgb(28 21 48 / 0.12);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-700);
+  outline-offset: 2px;
+}
+
+/* Hide the scrollbar on swipe rows (photo gallery, filter chips). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
