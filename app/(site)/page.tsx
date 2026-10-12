@@ -14,7 +14,11 @@ const PROMISES: { icon: IconName; label: string }[] = [
 ];
 
 export default async function HomePage() {
-  const rooms = await newestListings(6);
+  // If rooms can't load, still show the page with a "coming soon" note.
+  const rooms = await newestListings(6).catch((e) => {
+    console.error(e);
+    return [];
+  });
 
   return (
     <div className="mx-auto w-full max-w-5xl">
