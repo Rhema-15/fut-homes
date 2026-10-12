@@ -20,7 +20,13 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return { error: "Wrong email or password." };
+    if (error.code === "invalid_credentials") {
+      return { error: "Wrong email or password." };
+    }
+    if (error.code === "email_not_confirmed") {
+      return { error: "This email isn't confirmed yet in Supabase." };
+    }
+    return { error: `Couldn't log in: ${error.message}` };
   }
 
   redirect("/admin");
