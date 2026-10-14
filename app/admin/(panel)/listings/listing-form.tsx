@@ -28,8 +28,10 @@ export default function ListingForm({
   action,
   listing,
   submitLabel = "Save listing",
+  areas = [],
 }: {
   agents: { id: string; name: string }[];
+  areas?: string[];
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   listing?: ListingDefaults;
   submitLabel?: string;
@@ -89,14 +91,20 @@ export default function ListingForm({
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm">
-          Area (optional)
-          <input name="area" defaultValue={listing?.area ?? ""} placeholder="Tunga Goro" className={input} />
+          Area (pick a known one)
+          <input name="area" list="known-areas" autoComplete="off" defaultValue={listing?.area ?? ""} placeholder="Tunga Goro" className={input} />
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Distance to campus (km)
           <input name="distance_km" defaultValue={listing?.distance_km ?? ""} inputMode="decimal" placeholder="1.2" className={input} />
         </label>
       </div>
+
+      <datalist id="known-areas">
+        {areas.map((a) => (
+          <option key={a} value={a} />
+        ))}
+      </datalist>
 
       <label className="flex flex-col gap-1 text-sm">
         Rent per year (₦)

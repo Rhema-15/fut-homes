@@ -66,30 +66,43 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         taken={taken}
         videoPath={listing.video_path}
         videoLabel={formatDuration(listing.video_seconds)}
-        backHref={`/rooms?campus=${listing.campus}`}
+        backHref={`/rooms?where=${listing.campus}`}
         shareButton={taken ? undefined : <ShareRoom {...shareData({ ...listing, badge: badgeLevel(listing.agent) })} />}
       />
 
-      <section className="flex flex-col gap-2 px-4 pt-5 min-[768px]:px-0">
-        <span
-          className={
-            "self-start rounded-full px-2 py-1 text-xs leading-4 font-semibold " +
-            (taken ? "bg-error text-white" : "bg-success-50 text-success")
-          }
-        >
-          {taken ? "Taken" : "Available"}
-        </span>
-        {!taken && listing.confirmed_at && <span className="text-sm text-muted">{confirmedAgo(listing.confirmed_at)}</span>}
-        <h1 className="text-[28px] leading-[34px] font-extrabold tracking-[-0.01em] min-[768px]:text-[34px] min-[768px]:leading-10">
+      <section className="flex flex-col gap-2 px-[18px] pt-5 min-[768px]:px-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={
+              "rounded-full px-2.5 py-1 text-xs leading-4 font-bold " +
+              (taken ? "bg-error text-white" : "bg-success-50 text-success")
+            }
+          >
+            {taken ? "Taken" : "Available"}
+          </span>
+          {!taken && listing.confirmed_at && (
+            <span className="text-sm font-medium text-muted">{confirmedAgo(listing.confirmed_at)}</span>
+          )}
+        </div>
+        <h1 className="text-[30px] leading-[34px] font-extrabold tracking-[-0.03em] min-[768px]:text-[40px] min-[768px]:leading-[44px]">
           {listing.title}
         </h1>
-        <p>
-          <span className={"text-2xl leading-[30px] font-extrabold " + (taken ? "text-muted line-through" : "")}>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span
+            className={
+              "-rotate-2 rounded-[12px] border-2 border-ink bg-sticker-yellow px-3 py-1 text-[24px] leading-[30px] font-extrabold " +
+              (taken ? "line-through" : "")
+            }
+          >
             {formatNaira(listing.price)}
-          </span>{" "}
-          <span className="text-sm text-muted">/year · {type}</span>
+            <span className="text-sm font-bold">/year</span>
+          </span>
+          <span className="text-sm font-bold text-muted">
+            {type}
+            {listing.room_type === "shared" ? " · price is your share" : ""}
+          </span>
         </p>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-medium text-muted">
           {listing.area && (
             <span className="inline-flex items-center gap-1">
               <Icon name="map-pin" size={16} />
@@ -106,8 +119,8 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
       </section>
 
       {taken && (
-        <section className="px-4 pt-6 min-[768px]:px-0">
-          <p className="rounded-md bg-error-50 p-3 font-semibold text-error">
+        <section className="px-[18px] pt-6 min-[768px]:px-0">
+          <p className="rounded-md border-2 border-ink bg-error-50 p-3 font-bold text-error">
             This room has been taken. Here are similar rooms nearby.
           </p>
           {similar.length > 0 && (
@@ -119,9 +132,9 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
       )}
 
       {(listing.description || listing.fees_note) && (
-        <section className="flex flex-col gap-2 px-4 pt-6 min-[768px]:px-0">
-          <h2 className="text-lg leading-6 font-semibold">About this room</h2>
-          {listing.description && <p className="whitespace-pre-line text-slate">{listing.description}</p>}
+        <section className="flex flex-col gap-2 px-[18px] pt-6 min-[768px]:px-0">
+          <h2 className="text-[20px] leading-6 font-extrabold tracking-[-0.02em]">About this room</h2>
+          {listing.description && <p className="whitespace-pre-line font-medium text-slate">{listing.description}</p>}
           {listing.fees_note && (
             <p className="text-sm text-slate">
               <span className="font-semibold text-ink">Other fees: </span>
@@ -131,37 +144,37 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         </section>
       )}
 
-      <section className="px-4 pt-6 min-[768px]:px-0">
-        <div className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4">
+      <section className="px-[18px] pt-6 min-[768px]:px-0">
+        <div className="sticker flex flex-col gap-3 rounded-lg bg-white p-4">
           <div className="flex items-center gap-3">
             <AgentAvatar name={listing.agent.name} photo={listing.agent.photo_path} size={48} />
             <div className="flex flex-col items-start gap-1">
-              <span className="font-semibold">{firstName(listing.agent.name)}</span>
+              <span className="text-lg leading-6 font-extrabold">{firstName(listing.agent.name)}</span>
               <AgentBadge agentName={listing.agent.name} checks={listing.agent} listingCode={code} />
             </div>
           </div>
-          <p className="text-sm text-muted">
+          <p className="text-sm font-medium text-muted">
             {daysAgo(listing.created_at)} · Listing #{code}
           </p>
         </div>
       </section>
 
-      <section className="px-4 pt-6 min-[768px]:px-0">
+      <section className="px-[18px] pt-6 min-[768px]:px-0">
         <SafetyWarning />
       </section>
 
-      <section className="flex flex-col items-start px-4 pt-2 pb-8 min-[768px]:px-0">
+      <section className="flex flex-col items-start px-[18px] pt-2 pb-8 min-[768px]:px-0">
         {!taken && (
           <Link
             href={`/report?reason=taken&listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
-            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 underline underline-offset-4"
+            className="inline-flex min-h-11 items-center text-sm font-bold text-brand-700 underline underline-offset-4"
           >
             Already taken? Tell us
           </Link>
         )}
         <Link
           href={`/report?listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
-          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-error"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-error"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -172,16 +185,16 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
       </section>
 
       {!taken && (
-        <div className="sticky bottom-0 z-10 mt-auto flex items-center gap-3 border-t border-line bg-white px-4 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] min-[768px]:rounded-t-lg min-[768px]:border-x">
+        <div className="sticky bottom-0 z-10 mt-auto flex items-center gap-3 border-t-2 border-ink bg-white px-[18px] pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] min-[768px]:rounded-t-lg min-[768px]:border-x-2">
           <div className="min-w-0 flex-1">
             <div className="text-xl leading-6 font-extrabold">{formatNaira(listing.price)}</div>
-            <div className="text-xs leading-4 text-muted">per year</div>
+            <div className="text-xs leading-4 font-medium text-muted">per year</div>
           </div>
           <a
             href={whatsappHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-[52px] flex-[0_0_60%] items-center justify-center gap-2 rounded-md bg-whatsapp px-3 text-[15px] font-semibold text-white active:bg-whatsapp-pressed"
+            className="sticker flex h-[52px] flex-[0_0_60%] items-center justify-center gap-2 rounded-md bg-whatsapp px-3 text-[16px] font-extrabold text-white"
           >
             {/* Placeholder until the official WhatsApp glyph is added. */}
             <Icon name="message-circle" size={20} />
@@ -191,10 +204,10 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
       )}
 
       {taken && (
-        <div className="px-4 pb-8 min-[768px]:px-0">
+        <div className="px-[18px] pb-8 min-[768px]:px-0">
           <Link
-            href={`/rooms?campus=${listing.campus}`}
-            className="flex h-12 items-center justify-center rounded-md bg-brand-700 font-semibold text-white active:bg-brand-900"
+            href={`/rooms?where=${listing.campus}`}
+            className="sticker flex h-12 items-center justify-center rounded-md bg-brand-700 font-extrabold text-white"
           >
             See available rooms
           </Link>

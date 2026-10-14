@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 
-// latin-ext carries the ₦ sign.
-const jakarta = Plus_Jakarta_Sans({
+// latin-ext carries the ₦ sign. Variable font: one file covers 400–800.
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "600", "800"],
-  variable: "--font-jakarta",
+  variable: "--font-bricolage",
   display: "swap",
 });
 
@@ -22,12 +21,12 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4A2C8F",
+  themeColor: "#F3EEFF",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-NG" className={`${jakarta.variable} h-full`}>
+    <html lang="en-NG" className={`${bricolage.variable} h-full`}>
       <body className="flex min-h-full flex-col bg-bg font-sans text-ink">{children}</body>
     </html>
   );

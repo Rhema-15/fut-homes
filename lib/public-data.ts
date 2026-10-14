@@ -107,6 +107,7 @@ export const BUDGETS = [150000, 200000, 250000, 350000, 500000] as const;
 
 export type Filters = {
   campus: Campus | null;
+  area: string | null;
   type: RoomType | null;
   max: number | null;
   sort: Sort;
@@ -117,12 +118,16 @@ export function readFilters(params: Record<string, string | string[] | undefined
     const v = params[key];
     return typeof v === "string" ? v : Array.isArray(v) ? (v[0] ?? "") : "";
   };
-  const campus = one("campus");
+  // "where" from the search box: a campus id, or "area:<name>".
+  const where = one("where");
+  const campus = where && !where.startsWith("area:") ? where : one("campus");
+  const area = (where.startsWith("area:") ? where.slice(5) : one("area")).trim().slice(0, 60);
   const type = one("type");
   const max = Number(one("max"));
   const sort = one("sort");
   return {
     campus: isOneOf(CAMPUSES, campus) ? campus : null,
+    area: area || null,
     type: isOneOf(ROOM_TYPES, type) ? type : null,
     max: Number.isFinite(max) && max > 0 ? max : null,
     sort: isOneOf(SORTS, sort) ? sort : "near",
@@ -131,7 +136,8 @@ export function readFilters(params: Record<string, string | string[] | undefined
 
 export function filtersToQuery(filters: Partial<Filters>): string {
   const q = new URLSearchParams();
-  if (filters.campus) q.set("campus", filters.campus);
+  if (filters.area) q.set("where", `area:${filters.area}`);
+  else if (filters.campus) q.set("where", filters.campus);
   if (filters.type) q.set("type", filters.type);
   if (filters.max) q.set("max", String(filters.max));
   if (filters.sort && filters.sort !== "near") q.set("sort", filters.sort);
@@ -144,6 +150,7 @@ export async function searchListings(filters: Filters, limit = 60): Promise<Publ
   const { data, error } = await withFallback<Row[]>((select, hasConfirmed) => {
     let query = publicClient().from("listings").select(select).eq("agents.is_active", true);
     if (filters.campus) query = query.eq("campus", filters.campus);
+    if (filters.area) query = query.ilike("area", filters.area.replace(/[%_]/g, ""));
     if (filters.type) query = query.eq("room_type", filters.type);
     if (filters.max) query = query.lte("price", filters.max);
 
@@ -195,6 +202,23 @@ export async function getListing(id: string): Promise<PublicListing | null> {
 }
 
 export async function similarListings(listing: PublicListing, limit = 3): Promise<PublicListing[]> {
-  const rooms = await searchListings({ campus: listing.campus, type: null, max: null, sort: "near" }, 12);
+  const rooms = await searchListings({ campus: listing.campus, area: null, type: null, max: null, sort: "near" }, 12);
   return rooms.filter((r) => r.id !== listing.id && r.status === "available").slice(0, limit);
+}
+
+export type AreaSummary = { area: string; campus: Campus; count: number; cover: string | null };
+
+// Areas that currently have rooms students can see, busiest first, each
+// with a cover photo. Powers the "Where?" dropdown and the Browse row.
+export async function listAreas(): Promise<AreaSummary[]> {
+  const rooms = await searchListings({ campus: null, area: null, type: null, max: null, sort: "new" }, 200);
+  const byArea = new Map<string, AreaSummary>();
+  for (const r of rooms) {
+    if (r.status !== "available" || !r.area) continue;
+    const key = r.area.trim().toLowerCase();
+    const found = byArea.get(key);
+    if (found) found.count += 1;
+    else byArea.set(key, { area: r.area.trim(), campus: r.campus, count: 1, cover: r.photos[0] ?? null });
+  }
+  return [...byArea.values()].sort((a, b) => b.count - a.count || a.area.localeCompare(b.area));
 }

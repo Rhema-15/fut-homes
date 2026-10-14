@@ -86,3 +86,9 @@ export function confirmedAgo(iso: string | null): string | null {
   if (days === 1) return "Confirmed available yesterday";
   return `Confirmed available ${days} days ago`;
 }
+
+// Short form for cards: "0.8 km to GK".
+export function formatDistanceShort(km: number | null, campus: Campus): string | null {
+  if (km === null || km === undefined) return null;
+  return `${Number(km).toFixed(1)} km to ${campus === "bosso" ? "Bosso" : "GK"}`;
+}

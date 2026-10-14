@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { confirmedAgo, listingCode } from "@/lib/options";
 import { confirmListing, deleteListing, setListingPublished, setListingStatus, updateListing } from "../actions";
 import ListingForm from "../listing-form";
+import { knownAreas } from "@/lib/admin-areas";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Edit listing · FUT Homes admin", robots: { index: false } };
@@ -27,6 +28,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
     supabase.from("agents").select("id, name").order("name"),
   ]);
   if (!listing) notFound();
+  const areas = await knownAreas();
 
   const photos = [...(listing.listing_photos as { path: string; position: number }[])]
     .sort((a, b) => a.position - b.position)
@@ -103,6 +105,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
 
       <ListingForm
         agents={agents ?? []}
+        areas={areas}
         action={updateListing.bind(null, listing.id)}
         submitLabel="Save changes"
         listing={{

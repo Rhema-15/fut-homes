@@ -78,7 +78,7 @@ export default function ShareRoom({ card, caption, fileName, variant = "icon" }:
           type="button"
           onClick={open}
           aria-label="Share this room"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-float"
+          className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-white text-ink shadow-float"
         >
           <Icon name="share" size={20} />
         </button>

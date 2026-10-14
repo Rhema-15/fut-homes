@@ -1,59 +1,78 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Icon, type IconName } from "@/components/public/icons";
 import { ListingGrid } from "@/components/public/listing-card";
 import SearchForm from "@/components/public/search-form";
 import { SafetyWarning } from "@/components/public/site-chrome";
-import { newestListings } from "@/lib/public-data";
+import { formatNaira, photoUrl } from "@/lib/options";
+import { type AreaSummary, listAreas, newestListings } from "@/lib/public-data";
 
 export const instant = false;
 
-const PROMISES: { icon: IconName; label: string }[] = [
-  { icon: "shield-check", label: "Verified agents" },
-  { icon: "play", label: "Watch the room first" },
-  { icon: "message-circle", label: "Book on WhatsApp" },
-];
+const RINGS = ["bg-brand-700", "bg-sticker-pink", "bg-sticker-yellow", "bg-sticker-mint"];
 
 export default async function HomePage() {
-  // Render per request (must happen outside the catch below).
+  // Render per request (must happen outside the catches below).
   await connection();
-  // If rooms can't load, still show the page with a "coming soon" note.
-  const rooms = await newestListings(6).catch((e) => {
-    console.error(e);
-    return [];
-  });
+  // If rooms can't load, still show the page.
+  const [rooms, areas] = await Promise.all([
+    newestListings(6).catch((e) => {
+      console.error(e);
+      return [];
+    }),
+    listAreas().catch((e) => {
+      console.error(e);
+      return [] as AreaSummary[];
+    }),
+  ]);
+  const newestCover = rooms[0]?.photos[0] ?? null;
+  const roommateCover = rooms.find((r) => r.room_type === "shared")?.photos[0] ?? null;
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="min-[768px]:grid min-[768px]:grid-cols-[1fr_380px] min-[768px]:items-start min-[768px]:gap-8 min-[768px]:px-4 min-[768px]:pt-8">
-        <section className="flex flex-col gap-3 px-4 pt-8 pb-6 min-[768px]:px-0 min-[768px]:pt-6">
-          <h1 className="text-[32px] leading-[38px] font-extrabold tracking-[-0.01em] min-[768px]:text-[44px] min-[768px]:leading-[52px]">
-            Find a room near FUT, from agents we&apos;ve actually checked.
+      <div className="min-[820px]:grid min-[820px]:grid-cols-[1fr_400px] min-[820px]:items-start min-[820px]:gap-10 min-[820px]:px-[18px] min-[820px]:pt-10">
+        <section className="px-[18px] pt-5 min-[820px]:px-0 min-[820px]:pt-6">
+          <h1 className="text-[34px] leading-[36px] font-extrabold tracking-[-0.035em] min-[820px]:text-[56px] min-[820px]:leading-[56px]">
+            Find your room near FUT.
           </h1>
-          <p className="text-muted">Real videos. Verified agents. Pay only after you inspect.</p>
-
-          <ul className="mt-4 grid grid-cols-3 gap-2">
-            {PROMISES.map((p) => (
-              <li key={p.label} className="flex flex-col items-center gap-2 text-center">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                  <Icon name={p.icon} size={22} />
-                </span>
-                <span className="text-[13px] leading-[18px] font-semibold">{p.label}</span>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-2 text-base leading-[22px] font-medium text-muted min-[820px]:text-lg">
+            Rooms from verified agents around Bosso and Gidan Kwano. Inspect before you pay.
+          </p>
         </section>
 
-        <div className="mx-4 rounded-lg border border-line bg-white p-4 min-[768px]:mx-0">
-          <SearchForm />
+        <div className="sticker mx-[18px] mt-4 rounded-[22px] bg-white p-3.5 shadow-sticker min-[820px]:mx-0 min-[820px]:mt-0">
+          <SearchForm areas={areas} />
         </div>
       </div>
 
-      <section className="flex flex-col gap-4 px-4 pt-8">
+      <section className="pt-6" aria-labelledby="browse-title">
+        <h2 id="browse-title" className="px-[18px] text-[15px] font-extrabold">
+          Browse
+        </h2>
+        <ul className="no-scrollbar flex gap-3.5 overflow-x-auto px-[18px] pt-2.5 pb-1">
+          <BrowseCircle href="/rooms?sort=new" label="New today" photo={newestCover} ring={RINGS[0]} />
+          {areas.slice(0, 8).map((a, i) => (
+            <BrowseCircle
+              key={a.area}
+              href={`/rooms?where=${encodeURIComponent(`area:${a.area}`)}`}
+              label={a.area}
+              photo={a.cover}
+              ring={RINGS[(i + 1) % RINGS.length]}
+            />
+          ))}
+          <BrowseCircle href="/rooms?where=bosso" label="Near Bosso" photo={null} ring={RINGS[2]} text="Bosso" />
+          <BrowseCircle href="/rooms?where=gidan_kwano" label="Near GK" photo={null} ring={RINGS[1]} text="GK" />
+          {roommateCover && (
+            <BrowseCircle href="/rooms?type=shared" label="Roommates" photo={roommateCover} ring={RINGS[3]} />
+          )}
+          <BrowseCircle href="/rooms?max=250000" label="Under" photo={null} ring="" text={formatNaira(250000).replace(",000", "k")} dashed />
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-3 px-[18px] pt-6">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-[22px] leading-7 font-extrabold tracking-[-0.01em]">New rooms</h2>
+          <h2 className="text-[22px] leading-[26px] font-extrabold tracking-[-0.03em]">Fresh this week</h2>
           {rooms.length > 0 && (
-            <Link href="/rooms" className="text-sm font-semibold text-brand-700 underline-offset-4 hover:underline">
+            <Link href="/rooms" className="text-sm font-bold text-brand-700 underline-offset-4 hover:underline">
               See all
             </Link>
           )}
@@ -61,15 +80,60 @@ export default async function HomePage() {
         {rooms.length > 0 ? (
           <ListingGrid listings={rooms} />
         ) : (
-          <p className="rounded-lg border border-line bg-white p-4 text-muted">
+          <p className="sticker rounded-lg bg-white p-4 font-medium text-muted">
             New rooms are being added this week. Check back soon. No wahala.
           </p>
         )}
       </section>
 
-      <section className="px-4 py-8">
+      <section className="px-[18px] pt-7 pb-8">
         <SafetyWarning />
       </section>
     </div>
+  );
+}
+
+function BrowseCircle({
+  href,
+  label,
+  photo,
+  ring,
+  text,
+  dashed = false,
+}: {
+  href: string;
+  label: string;
+  photo: string | null;
+  ring: string;
+  text?: string;
+  dashed?: boolean;
+}) {
+  return (
+    <li className="flex-none">
+      <Link href={href} className="flex w-[68px] flex-col items-center gap-1.5 text-ink">
+        {dashed ? (
+          <span className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-dashed border-ink text-[15px] font-extrabold">
+            {text}
+          </span>
+        ) : (
+          <span className={"flex h-16 w-16 rounded-full p-[3px] " + ring}>
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoUrl(photo)}
+                alt=""
+                loading="lazy"
+                className="h-full w-full rounded-full border-[3px] border-bg object-cover"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center rounded-full border-[3px] border-bg bg-white text-[13px] font-extrabold">
+                {text}
+              </span>
+            )}
+          </span>
+        )}
+        <span className="w-full truncate text-center text-xs leading-[14px] font-bold">{label}</span>
+      </Link>
+    </li>
   );
 }

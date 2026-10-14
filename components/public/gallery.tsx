@@ -31,7 +31,7 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
   }
 
   return (
-    <div className="relative bg-brand-50">
+    <div className="relative border-b-2 border-ink bg-brand-50 min-[768px]:rounded-lg min-[768px]:border-2">
       <div
         ref={strip}
         tabIndex={photos.length > 1 ? 0 : undefined}
@@ -69,7 +69,7 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
           type="button"
           onClick={() => goTo(index - 1)}
           aria-label="Previous photo"
-          className="absolute top-1/2 left-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink shadow-float [@media(pointer:fine)]:flex"
+          className="absolute top-1/2 left-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-white text-ink shadow-float [@media(pointer:fine)]:flex"
         >
           <Icon name="chevron-left" size={22} />
         </button>
@@ -79,7 +79,7 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
           type="button"
           onClick={() => goTo(index + 1)}
           aria-label="Next photo"
-          className="absolute top-1/2 right-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-ink shadow-float [@media(pointer:fine)]:flex"
+          className="absolute top-1/2 right-3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-white text-ink shadow-float [@media(pointer:fine)]:flex"
         >
           <Icon name="chevron-right" size={22} />
         </button>
@@ -88,7 +88,7 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
       <a
         href={backHref}
         aria-label="Back to rooms"
-        className="absolute top-3 left-3 flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-float"
+        className="absolute top-3 left-3 flex h-11 w-11 items-center justify-center rounded-full border-2 border-ink bg-white text-ink shadow-float"
       >
         <Icon name="arrow-left" size={22} />
       </a>
@@ -101,7 +101,7 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
             setPlaying(true);
             player.current?.showModal();
           }}
-          className="absolute bottom-3 left-3 inline-flex h-10 items-center gap-1.5 rounded-full bg-scrim px-3.5 text-sm font-semibold text-white"
+          className="absolute bottom-3 left-3 inline-flex h-11 items-center gap-1.5 rounded-full border-2 border-ink bg-sticker-yellow px-4 text-sm font-extrabold text-ink shadow-float"
         >
           <Icon name="play" size={14} />
           Watch room video{videoLabel ? ` · ${videoLabel}` : ""}
