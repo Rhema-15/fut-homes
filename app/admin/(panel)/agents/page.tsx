@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { formatWhatsapp, photoUrl } from "@/lib/options";
+import { badgeLevel } from "@/lib/agent-checks";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Agents · FUT Homes admin", robots: { index: false } };
@@ -10,7 +11,7 @@ export default async function AgentsPage() {
   const supabase = await createClient();
   const { data: agents, error } = await supabase
     .from("agents")
-    .select("id, name, whatsapp, photo_path, is_trusted, is_active, listings(count)")
+    .select("id, name, whatsapp, photo_path, is_active, long_time_poster, still_posting, students_confirmed, listings(count)")
     .order("created_at", { ascending: false });
 
   return (
@@ -47,7 +48,7 @@ export default async function AgentsPage() {
                 </p>
                 <p className="text-sm text-neutral-500">
                   {formatWhatsapp(agent.whatsapp)} ·{" "}
-                  {agent.is_trusted ? "Trusted agent" : "ID verified"} · {count} listing
+                  {{ trusted: "Trusted agent", verified: "Verified", none: "No badge" }[badgeLevel(agent) ?? "none"]} · {count} listing
                   {count === 1 ? "" : "s"}
                 </p>
               </div>

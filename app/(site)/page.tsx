@@ -9,7 +9,7 @@ import { newestListings } from "@/lib/public-data";
 export const instant = false;
 
 const PROMISES: { icon: IconName; label: string }[] = [
-  { icon: "shield-check", label: "Every agent ID-checked" },
+  { icon: "shield-check", label: "Verified agents" },
   { icon: "play", label: "Watch the room first" },
   { icon: "message-circle", label: "Book on WhatsApp" },
 ];
@@ -30,7 +30,7 @@ export default async function HomePage() {
           <h1 className="text-[32px] leading-[38px] font-extrabold tracking-[-0.01em] min-[768px]:text-[44px] min-[768px]:leading-[52px]">
             Find a room near FUT, from agents we&apos;ve actually checked.
           </h1>
-          <p className="text-muted">Real videos. ID-checked agents. Pay only after you inspect.</p>
+          <p className="text-muted">Real videos. Verified agents. Pay only after you inspect.</p>
 
           <ul className="mt-4 grid grid-cols-3 gap-2">
             {PROMISES.map((p) => (

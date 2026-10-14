@@ -9,7 +9,7 @@ export default function NewAgentPage() {
     <div className="max-w-md">
       <h1 className="text-2xl font-semibold">Add agent</h1>
       <p className="mt-1 text-sm text-neutral-500">
-        Only add agents whose ID you&apos;ve checked. Don&apos;t upload their ID here.
+        Tick only what you&apos;ve actually checked. Students see exactly those checks.
       </p>
       <AgentForm action={createAgent} />
     </div>

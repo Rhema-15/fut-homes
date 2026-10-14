@@ -15,7 +15,7 @@ export default async function EditAgentPage({ params }: PageProps<"/admin/agents
   const supabase = await createClient();
   const { data: agent } = await supabase
     .from("agents")
-    .select("id, name, whatsapp, photo_path, is_trusted, is_active, listings(count)")
+    .select("id, name, whatsapp, photo_path, is_active, long_time_poster, still_posting, students_confirmed, listings(count)")
     .eq("id", id)
     .maybeSingle();
   if (!agent) notFound();
@@ -43,8 +43,10 @@ export default async function EditAgentPage({ params }: PageProps<"/admin/agents
         agent={{
           name: agent.name,
           whatsapp: formatWhatsapp(agent.whatsapp),
-          is_trusted: agent.is_trusted,
           photo_path: agent.photo_path,
+          long_time_poster: agent.long_time_poster,
+          still_posting: agent.still_posting,
+          students_confirmed: agent.students_confirmed,
         }}
       />
 

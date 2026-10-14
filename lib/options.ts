@@ -16,7 +16,7 @@ export const CAMPUSES = {
 export type Campus = keyof typeof CAMPUSES;
 
 export const VERIFICATION_LEVELS = {
-  id_verified: "ID verified",
+  id_verified: "Verified",
   trusted: "Trusted agent",
 } as const;
 export type VerificationLevel = keyof typeof VERIFICATION_LEVELS;

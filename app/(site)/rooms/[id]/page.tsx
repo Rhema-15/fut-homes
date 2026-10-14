@@ -18,6 +18,7 @@ import {
 } from "@/lib/options";
 import { getListing, similarListings } from "@/lib/public-data";
 import { shareData } from "@/lib/share";
+import { badgeLevel } from "@/lib/agent-checks";
 
 export const instant = false;
 
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/rooms/[id]">): Pr
   const listing = await getListing((await params).id);
   if (!listing) return { title: "Room not found" };
   const title = `${ROOM_TYPES[listing.room_type]}${listing.area ? ` in ${listing.area}` : ""}, ${formatNaira(listing.price)}/year`;
-  const description = `${listing.status === "taken" ? "Taken. " : ""}${listing.title}. ID-checked agent on FUT Homes. Never pay before you inspect.`;
+  const description = `${listing.status === "taken" ? "Taken. " : ""}${listing.title}. On FUT Homes. Never pay before you inspect.`;
   return {
     title,
     description,
@@ -65,7 +66,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         videoPath={listing.video_path}
         videoLabel={formatDuration(listing.video_seconds)}
         backHref={`/rooms?campus=${listing.campus}`}
-        shareButton={taken ? undefined : <ShareRoom {...shareData({ ...listing, is_trusted: listing.agent.is_trusted })} />}
+        shareButton={taken ? undefined : <ShareRoom {...shareData({ ...listing, badge: badgeLevel(listing.agent) })} />}
       />
 
       <section className="flex flex-col gap-2 px-4 pt-5 min-[768px]:px-0">
@@ -134,11 +135,11 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
             <AgentAvatar name={listing.agent.name} photo={listing.agent.photo_path} size={48} />
             <div className="flex flex-col items-start gap-1">
               <span className="font-semibold">{firstName(listing.agent.name)}</span>
-              <AgentBadge agentName={listing.agent.name} isTrusted={listing.agent.is_trusted} checkedOn={listing.agent.created_at} listingCode={code} />
+              <AgentBadge agentName={listing.agent.name} checks={listing.agent} listingCode={code} />
             </div>
           </div>
           <p className="text-sm text-muted">
-            {daysAgo(listing.created_at)} · Listing #{code} · Tap the badge to see what we checked
+            {daysAgo(listing.created_at)} · Listing #{code}
           </p>
         </div>
       </section>

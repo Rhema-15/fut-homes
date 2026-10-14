@@ -1,4 +1,5 @@
 import type { ShareCardData } from "@/lib/share-card";
+import type { BadgeLevel } from "@/lib/agent-checks";
 import { ROOM_TYPES, type Campus, type RoomType, formatDistance, formatNaira, listingCode, photoUrl } from "@/lib/options";
 
 export const SITE_HOST = "fut-homes.vercel.app";
@@ -16,7 +17,7 @@ type ListingLike = {
   price: number;
   video_path: string | null;
   photos: string[];
-  is_trusted: boolean;
+  badge: BadgeLevel;
 };
 
 export function shareData(l: ListingLike): { card: ShareCardData; caption: string; fileName: string } {
@@ -26,7 +27,7 @@ export function shareData(l: ListingLike): { card: ShareCardData; caption: strin
   const caption = [
     `${type}${l.area ? ` in ${l.area}` : ""}, ${formatNaira(l.price)}/year`,
     distance,
-    l.is_trusted ? "Trusted agent on FUT Homes." : "ID-checked agent on FUT Homes.",
+    l.badge === "trusted" ? "Trusted agent on FUT Homes." : l.badge === "verified" ? "Verified agent on FUT Homes." : "On FUT Homes.",
     `${l.video_path ? "Watch the room video and book" : "See photos and book"} an inspection: https://${link}`,
     "Never pay before you inspect.",
   ]
@@ -41,7 +42,7 @@ export function shareData(l: ListingLike): { card: ShareCardData; caption: strin
       roomType: type,
       area: l.area,
       distance,
-      isTrusted: l.is_trusted,
+      badge: l.badge,
       hasVideo: Boolean(l.video_path),
       shortLink: link,
     },

@@ -71,12 +71,7 @@ export default function ListingCard({ listing, eager = false }: { listing: Publi
           {firstName(listing.agent.name)}
           {/* Sits above the stretched link so the badge stays tappable. */}
           <span className="relative z-10 ml-auto">
-            <AgentBadge
-              agentName={listing.agent.name}
-              isTrusted={listing.agent.is_trusted}
-              checkedOn={listing.agent.created_at}
-              listingCode={listingCode(listing.id)}
-            />
+            <AgentBadge agentName={listing.agent.name} checks={listing.agent} listingCode={listingCode(listing.id)} />
           </span>
         </div>
       </div>

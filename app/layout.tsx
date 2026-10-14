@@ -13,11 +13,11 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://fut-homes.vercel.app"),
   title: {
-    default: "FUT Homes · Rooms near FUTMINNA from ID-checked agents",
+    default: "FUT Homes · Rooms near FUTMINNA from verified agents",
     template: "%s · FUT Homes",
   },
   description:
-    "Find a room near Bosso or Gidan Kwano campus. Real videos, ID-checked agents, and you pay only after you inspect.",
+    "Find a room near Bosso or Gidan Kwano campus. Real videos, verified agents, and you pay only after you inspect.",
   openGraph: { siteName: "FUT Homes", locale: "en_NG", type: "website" },
 };
 

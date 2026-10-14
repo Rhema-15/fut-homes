@@ -7,7 +7,20 @@ import type { FormState } from "@/lib/form-utils";
 const initialState: FormState = { error: null };
 const input = "rounded-md border border-neutral-300 px-3 py-2 text-base";
 
-export type AgentDefaults = { name: string; whatsapp: string; is_trusted: boolean; photo_path: string | null };
+export type AgentDefaults = {
+  name: string;
+  whatsapp: string;
+  photo_path: string | null;
+  long_time_poster: boolean;
+  still_posting: boolean;
+  students_confirmed: boolean;
+};
+
+const CHECKS = [
+  { name: "long_time_poster", label: "1. Has been posting rooms around FUT for a long time" },
+  { name: "still_posting", label: "2. Still actively posting rooms" },
+  { name: "students_confirmed", label: "3. Past students (that you found yourself) confirmed they rented through this agent" },
+] as const;
 
 export default function AgentForm({
   action,
@@ -33,16 +46,19 @@ export default function AgentForm({
         <input name="whatsapp" defaultValue={agent?.whatsapp} type="tel" inputMode="tel" placeholder="0803 123 4567" required className={input} />
       </label>
 
-      <label className="flex items-start gap-3 rounded-md border border-neutral-300 p-3 text-sm">
-        <input name="is_trusted" type="checkbox" defaultChecked={agent?.is_trusted} className="mt-1 h-4 w-4" />
-        <span>
-          <span className="font-medium">Trusted agent</span>
-          <span className="block text-neutral-500">
-            Tick only if past students you found yourself confirmed they rented through this agent. Every agent is
-            &ldquo;ID verified&rdquo; by default.
-          </span>
-        </span>
-      </label>
+      <fieldset className="flex flex-col gap-2 rounded-md border border-neutral-300 p-3 text-sm">
+        <legend className="px-1 font-medium">What you&apos;ve checked</legend>
+        <p className="text-neutral-500">
+          Only ticked checks show to students. Nothing ticked: no badge. 1 or 2: &ldquo;Verified&rdquo;. 3:
+          &ldquo;Trusted agent&rdquo;.
+        </p>
+        {CHECKS.map((c) => (
+          <label key={c.name} className="flex items-start gap-3">
+            <input name={c.name} type="checkbox" defaultChecked={agent?.[c.name]} className="mt-1 h-4 w-4" />
+            <span>{c.label}</span>
+          </label>
+        ))}
+      </fieldset>
 
       <PhotoUpload
         name="photo"

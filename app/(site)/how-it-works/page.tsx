@@ -19,7 +19,7 @@ const STEPS = [
   },
   {
     title: "Book an inspection on WhatsApp",
-    body: "One tap opens a chat with the ID-checked agent, with the listing details already typed in.",
+    body: "One tap opens a chat with the agent, with the listing details already typed in.",
   },
   {
     title: "Inspect, then pay",
@@ -83,10 +83,10 @@ export default function HowItWorksPage() {
           <p>
             <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-1 align-middle text-xs leading-4 font-semibold text-brand-700">
               <Icon name="shield-check" size={14} strokeWidth={2.4} />
-              ID verified
+              Verified
             </span>
-            We checked the agent&apos;s ID and a selfie, and their real name and WhatsApp number are on their profile.
-            Every agent on FUT Homes has this.
+            The agent has been posting rooms around FUT for a long time, or is still actively posting. Tap any badge to
+            see exactly what we checked.
           </p>
           <p>
             <span className="mr-2 inline-flex items-center gap-1 rounded-full bg-brand-700 px-2 py-1 align-middle text-xs leading-4 font-semibold text-white">
@@ -95,7 +95,7 @@ export default function HowItWorksPage() {
             </span>
             Everything above, plus past students we found ourselves confirmed they rented through this agent.
           </p>
-          <p className="text-sm text-muted">A badge shows who someone is, not that a deal is safe. Always inspect first.</p>
+          <p className="text-sm text-muted">A badge shows an agent&apos;s track record, not that a deal is safe. Always inspect first.</p>
         </div>
       </section>
 

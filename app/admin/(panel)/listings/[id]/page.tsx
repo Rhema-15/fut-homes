@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import ConfirmButton from "@/components/admin/confirm-button";
 import ShareRoom from "@/components/public/share-room";
 import { shareData } from "@/lib/share";
+import { type AgentChecks, badgeLevel } from "@/lib/agent-checks";
 import { createClient } from "@/lib/supabase/server";
 import { listingCode } from "@/lib/options";
 import { deleteListing, setListingPublished, setListingStatus, updateListing } from "../actions";
@@ -19,7 +20,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
     supabase
       .from("listings")
       .select(
-        "id, agent_id, title, room_type, campus, area, distance_km, price, fees_note, description, video_path, video_seconds, status, is_published, agents(is_trusted), listing_photos(path, position)",
+        "id, agent_id, title, room_type, campus, area, distance_km, price, fees_note, description, video_path, video_seconds, status, is_published, agents(long_time_poster, still_posting, students_confirmed), listing_photos(path, position)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -76,7 +77,10 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
               price: listing.price,
               video_path: listing.video_path,
               photos,
-              is_trusted: Boolean((listing.agents as unknown as { is_trusted: boolean } | null)?.is_trusted),
+              badge: (() => {
+                const a = listing.agents as unknown as AgentChecks | null;
+                return a ? badgeLevel(a) : null;
+              })(),
             })}
           />
         </div>

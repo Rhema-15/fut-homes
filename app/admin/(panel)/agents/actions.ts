@@ -4,13 +4,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { type FormState, pathList, saveError, text } from "@/lib/form-utils";
 import { normalizeWhatsapp } from "@/lib/options";
+import { badgeLevel, readChecks } from "@/lib/agent-checks";
 
 type Parsed = { error: string } | { fields: Record<string, string | boolean | null> };
 
 function parse(formData: FormData): Parsed {
   const name = text(formData, "name");
   const whatsapp = normalizeWhatsapp(text(formData, "whatsapp"));
-  const isTrusted = formData.get("is_trusted") === "on";
+  const checks = readChecks(formData);
+  const level = badgeLevel(checks);
   const [photoPath] = pathList(formData, "photo");
 
   if (!name) return { error: "Enter the agent's name." };
@@ -20,8 +22,10 @@ function parse(formData: FormData): Parsed {
     fields: {
       name,
       whatsapp,
-      is_trusted: isTrusted,
-      verification_level: isTrusted ? "trusted" : "id_verified",
+      ...checks,
+      // Older columns, kept in step with the checks.
+      is_trusted: level === "trusted",
+      verification_level: level === "trusted" ? "trusted" : "id_verified",
       photo_path: photoPath ?? null,
     },
   };

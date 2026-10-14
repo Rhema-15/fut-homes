@@ -17,6 +17,9 @@ export type PublicAgent = {
   whatsapp: string;
   photo_path: string | null;
   is_trusted: boolean;
+  long_time_poster: boolean;
+  still_posting: boolean;
+  students_confirmed: boolean;
   created_at: string;
 };
 
@@ -40,7 +43,7 @@ export type PublicListing = {
 
 const SELECT =
   "id, title, room_type, campus, area, distance_km, price, fees_note, description, status, video_path, video_seconds, created_at, " +
-  "agents!inner(id, name, whatsapp, photo_path, is_trusted, created_at), listing_photos(path, position)";
+  "agents!inner(id, name, whatsapp, photo_path, is_trusted, long_time_poster, still_posting, students_confirmed, created_at), listing_photos(path, position)";
 
 type Row = Omit<PublicListing, "agent" | "photos"> & {
   agents: PublicAgent;

@@ -4,7 +4,7 @@ import { FUT_HOMES_WHATSAPP, whatsappLink } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "For agents",
-  description: "List your rooms where FUTMINNA students actually look. ID verified from day one, free at launch.",
+  description: "List your rooms where FUTMINNA students actually look. Free at launch.",
 };
 
 const REASONS: { icon: IconName; title: string; body: string }[] = [
@@ -16,7 +16,7 @@ const REASONS: { icon: IconName; title: string; body: string }[] = [
   {
     icon: "shield-check",
     title: "A badge students trust",
-    body: "ID verified from day one. Earn Trusted agent when past students confirm they rented through you.",
+    body: "Get a Verified badge for your track record. Earn Trusted agent when past students confirm they rented through you.",
   },
   {
     icon: "map-pin",
@@ -26,15 +26,14 @@ const REASONS: { icon: IconName; title: string; body: string }[] = [
 ];
 
 const STEPS = [
-  "Message us on WhatsApp with your full name (as on your ID), the areas you cover, and a clear photo of your ID.",
-  "We check it and reply on WhatsApp.",
-  "For each room, send a photo of the building from outside, a video of the room, and the price. We post it with your ID verified badge.",
+  "Message us on WhatsApp with your name and the areas you cover.",
+  "We look at your track record and reply on WhatsApp.",
+  "For each room, send a photo of the building from outside, a video of the room, and the price. We post it on FUT Homes.",
 ];
 
 const MESSAGE = `Hi FUT Homes, I'm an agent and I'd like to list my rooms.
-Full name (as on my ID):
+Name:
 Areas I cover:
-I'll send a photo of my ID next.
 I will never ask a student to pay before they have inspected the room.`;
 
 export default function ForAgentsPage() {
@@ -46,7 +45,7 @@ export default function ForAgentsPage() {
           List your rooms where FUT students actually look.
         </h1>
         <p className="text-slate">
-          Students watch your room video, see that you&apos;re ID-checked, and message you on WhatsApp ready to
+          Students watch your room video, see that you&apos;re verified, and message you on WhatsApp ready to
           inspect.
         </p>
       </section>
@@ -70,7 +69,7 @@ export default function ForAgentsPage() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-[22px] leading-7 font-extrabold tracking-[-0.01em]">How you get verified</h2>
+        <h2 className="text-[22px] leading-7 font-extrabold tracking-[-0.01em]">How to list</h2>
         <ol className="flex flex-col gap-3">
           {STEPS.map((step, i) => (
             <li key={step} className="flex gap-4">
@@ -81,7 +80,6 @@ export default function ForAgentsPage() {
             </li>
           ))}
         </ol>
-        <p className="text-sm text-muted">Your ID is only used to verify you. It&apos;s never shown to students.</p>
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4">

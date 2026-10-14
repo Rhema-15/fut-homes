@@ -28,9 +28,12 @@ Launch is a **concierge** version:
 
 After launch: payments (held until the student confirms move-in, agent pays a percentage), agent self-signup, reviews.
 
-## Verification levels (for the agent's badge field)
-- **ID verified**: ID photo + selfie checked by Rhema, real name and WhatsApp on profile. Enough to list.
-- **Trusted agent**: past students the agent housed confirm he's legit (references Rhema finds himself).
+## Agent badges (no ID checks since Oct 14)
+Rhema ticks three checks per agent in admin (agents.long_time_poster, still_posting, students_confirmed; logic in lib/agent-checks.ts):
+1. Has been posting rooms around FUT for a long time
+2. Still actively posting rooms
+3. Past students (found by Rhema) confirmed they rented through the agent
+Nothing ticked: no badge. 1 or 2: "Verified". 3: "Trusted agent". The badge sheet lists only the ticked checks. Never claim ID checks anywhere.
 
 ## Rules for working on this code
 - Build only what the current task asks. No extra libraries or features.
@@ -46,3 +49,4 @@ After launch: payments (held until the student confirms move-in, agent pays a pe
 - 2026-10-12, Day 4: SQL 004_taken_at.sql (listings.taken_at; taken rooms drop off search after 7 days). Admin: edit pages for listings (all fields + photos/video, Make cover, mark taken/available, hide/show, delete with storage cleanup) and agents (edit, hide agent + their listings, delete only with 0 listings). Public: /report (WhatsApp to Rhema 2349133615232 with reason, listing # and agent prefilled; links from listing page, badge sheet, footer, how-it-works), /for-agents (concierge: WhatsApp button with prefilled sign-up message, free at launch). Header shows "For agents". Contact number in lib/contact.ts. Still a placeholder: official WhatsApp glyph. Next (Day 5): load 20+ real listings, phone testing with students, polish from their feedback.
 - 2026-10-12: Listing gallery works on PC: prev/next arrow buttons (only on mouse devices, hidden at first/last photo) + keyboard arrow keys; chevron-left/right icons added.
 - 2026-10-14: Share feature. lib/share-card.ts draws a 1080x1350 branded JPEG in the browser (canvas: cover photo, amber price pill, type · area, distance, badge, short link, safety line). components/public/share-room.tsx: share sheet (Web Share API with file + caption → WhatsApp; fallback save image + copy caption). On listing pages (top-right share button, hidden when taken) and admin edit page ("Share kit"). Short links /r/<first 6 hex of id> redirect to the listing (app/(site)/r/[code]/route.ts). Rhema's growth plan: demand first (listings as content on WhatsApp TV/status) so agents want to list.
+- 2026-10-14: Dropped ID checks. SQL 005_agent_checks.sql adds the three check columns. "ID-checked/ID verified" wording replaced with "verified" on home, layout metadata, cards, sheet, how-it-works, for-agents (no ID photo asked), share image + caption. Admin agent form: three checkboxes instead of the Trusted tick (is_trusted/verification_level kept in sync).

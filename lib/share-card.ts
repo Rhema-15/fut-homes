@@ -8,7 +8,7 @@ export type ShareCardData = {
   roomType: string; // "Self-contain"
   area: string | null;
   distance: string | null; // "1.4 km to Gidan Kwano campus"
-  isTrusted: boolean;
+  badge: "trusted" | "verified" | null;
   hasVideo: boolean;
   shortLink: string; // "fut-homes.vercel.app/r/9F1C2A"
 };
@@ -145,17 +145,19 @@ export async function makeShareCard(d: ShareCardData): Promise<Blob> {
   y += 44;
 
   // Badge
-  pill(
-    ctx,
-    x,
-    y,
-    d.isTrusted ? "✓ Trusted agent" : "✓ ID-checked agent",
-    f(600, 30),
-    d.isTrusted ? C.brand700 : C.brand50,
-    d.isTrusted ? C.white : C.brand700,
-    24,
-    60,
-  );
+  if (d.badge) {
+    pill(
+      ctx,
+      x,
+      y,
+      d.badge === "trusted" ? "✓ Trusted agent" : "✓ Verified agent",
+      f(600, 30),
+      d.badge === "trusted" ? C.brand700 : C.brand50,
+      d.badge === "trusted" ? C.white : C.brand700,
+      24,
+      60,
+    );
+  }
 
   // Footer: link + safety line
   ctx.fillStyle = C.white;
