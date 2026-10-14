@@ -18,7 +18,16 @@ export default async function EditAgentPage({ params }: PageProps<"/admin/agents
     .select("id, name, whatsapp, photo_path, is_active, long_time_poster, still_posting, students_confirmed, listings(count)")
     .eq("id", id)
     .maybeSingle();
-  if (!agent) notFound();
+  if (!agent) {
+    // Most likely SQL 005 hasn't been run yet.
+    const { data: exists } = await supabase.from("agents").select("id").eq("id", id).maybeSingle();
+    if (!exists) notFound();
+    return (
+      <p className="max-w-md text-sm text-red-600">
+        Run 005_agent_checks.sql in Supabase first, then reload this page to edit this agent.
+      </p>
+    );
+  }
   const listingCount = (agent.listings as unknown as { count: number }[])[0]?.count ?? 0;
 
   return (

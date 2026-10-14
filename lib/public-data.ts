@@ -41,12 +41,26 @@ export type PublicListing = {
   photos: string[];
 };
 
+const LISTING_COLS =
+  "id, title, room_type, campus, area, distance_km, price, fees_note, description, status, video_path, video_seconds, created_at, ";
 const SELECT =
-  "id, title, room_type, campus, area, distance_km, price, fees_note, description, status, video_path, video_seconds, created_at, " +
+  LISTING_COLS +
   "agents!inner(id, name, whatsapp, photo_path, is_trusted, long_time_poster, still_posting, students_confirmed, created_at), listing_photos(path, position)";
+// Before SQL 005 is run the check columns don't exist yet: fall back to
+// the old Trusted tick so the site keeps working.
+const SELECT_OLD =
+  LISTING_COLS + "agents!inner(id, name, whatsapp, photo_path, is_trusted, created_at), listing_photos(path, position)";
+
+async function withFallback<T>(build: (select: string) => PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>) {
+  const first = await build(SELECT);
+  if (first.error?.code === "42703") return build(SELECT_OLD);
+  return first;
+}
+
 
 type Row = Omit<PublicListing, "agent" | "photos"> & {
-  agents: PublicAgent;
+  agents: Omit<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed"> &
+    Partial<Pick<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed">>;
   listing_photos: { path: string; position: number }[];
 };
 
@@ -55,7 +69,12 @@ function shape(row: Row): PublicListing {
   return {
     ...rest,
     distance_km: rest.distance_km === null ? null : Number(rest.distance_km),
-    agent: agents,
+    agent: {
+      ...agents,
+      long_time_poster: agents.long_time_poster ?? false,
+      still_posting: agents.still_posting ?? false,
+      students_confirmed: agents.students_confirmed ?? agents.is_trusted,
+    },
     photos: [...listing_photos].sort((a, b) => a.position - b.position).map((p) => p.path),
   };
 }
@@ -101,50 +120,58 @@ export function filtersToQuery(filters: Partial<Filters>): string {
 
 export async function searchListings(filters: Filters, limit = 60): Promise<PublicListing[]> {
   await connection();
-  let query = publicClient().from("listings").select(SELECT).eq("agents.is_active", true);
-  if (filters.campus) query = query.eq("campus", filters.campus);
-  if (filters.type) query = query.eq("room_type", filters.type);
-  if (filters.max) query = query.lte("price", filters.max);
-
-  // Taken rooms stay visible (greyed out) for 7 days, then drop off.
   const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
-  query = query.or(`status.eq.available,taken_at.gt.${weekAgo}`);
+  const { data, error } = await withFallback<Row[]>((select) => {
+    let query = publicClient().from("listings").select(select).eq("agents.is_active", true);
+    if (filters.campus) query = query.eq("campus", filters.campus);
+    if (filters.type) query = query.eq("room_type", filters.type);
+    if (filters.max) query = query.lte("price", filters.max);
 
-  // Taken rooms always go to the bottom.
-  query = query.order("status", { ascending: true });
-  if (filters.sort === "price") query = query.order("price", { ascending: true });
-  else if (filters.sort === "new") query = query.order("created_at", { ascending: false });
-  else query = query.order("distance_km", { ascending: true, nullsFirst: false }).order("price", { ascending: true });
+    // Taken rooms stay visible (greyed out) for 7 days, then drop off.
+    query = query.or(`status.eq.available,taken_at.gt.${weekAgo}`);
 
-  const { data, error } = await query.limit(limit);
+    // Taken rooms always go to the bottom.
+    query = query.order("status", { ascending: true });
+    if (filters.sort === "price") query = query.order("price", { ascending: true });
+    else if (filters.sort === "new") query = query.order("created_at", { ascending: false });
+    else query = query.order("distance_km", { ascending: true, nullsFirst: false }).order("price", { ascending: true });
+
+    return query.limit(limit) as unknown as PromiseLike<{ data: Row[] | null; error: { code?: string; message: string } | null }>;
+  });
   if (error) throw new Error(`Couldn't load rooms: ${error.message}`);
-  return (data as unknown as Row[]).map(shape);
+  return (data ?? []).map(shape);
 }
 
 export async function newestListings(limit = 4): Promise<PublicListing[]> {
   await connection();
-  const { data, error } = await publicClient()
-    .from("listings")
-    .select(SELECT)
-    .eq("agents.is_active", true)
-    .eq("status", "available")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+  const { data, error } = await withFallback<Row[]>(
+    (select) =>
+      publicClient()
+        .from("listings")
+        .select(select)
+        .eq("agents.is_active", true)
+        .eq("status", "available")
+        .order("created_at", { ascending: false })
+        .limit(limit) as unknown as PromiseLike<{ data: Row[] | null; error: { code?: string; message: string } | null }>,
+  );
   if (error) throw new Error(`Couldn't load rooms: ${error.message}`);
-  return (data as unknown as Row[]).map(shape);
+  return (data ?? []).map(shape);
 }
 
 export async function getListing(id: string): Promise<PublicListing | null> {
   await connection();
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const { data, error } = await publicClient()
-    .from("listings")
-    .select(SELECT)
-    .eq("id", id)
-    .eq("agents.is_active", true)
-    .maybeSingle();
+  const { data, error } = await withFallback<Row[]>(
+    (select) =>
+      publicClient()
+        .from("listings")
+        .select(select)
+        .eq("id", id)
+        .eq("agents.is_active", true)
+        .limit(1) as unknown as PromiseLike<{ data: Row[] | null; error: { code?: string; message: string } | null }>,
+  );
   if (error) throw new Error(`Couldn't load the room: ${error.message}`);
-  return data ? shape(data as unknown as Row) : null;
+  return data?.[0] ? shape(data[0]) : null;
 }
 
 export async function similarListings(listing: PublicListing, limit = 3): Promise<PublicListing[]> {

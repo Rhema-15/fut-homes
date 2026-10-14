@@ -9,10 +9,24 @@ export const metadata: Metadata = { title: "Agents · FUT Homes admin", robots: 
 
 export default async function AgentsPage() {
   const supabase = await createClient();
-  const { data: agents, error } = await supabase
+  // Falls back to the old columns until SQL 005 has been run.
+  let { data: agents, error } = await supabase
     .from("agents")
     .select("id, name, whatsapp, photo_path, is_active, long_time_poster, still_posting, students_confirmed, listings(count)")
     .order("created_at", { ascending: false });
+  if (error?.code === "42703") {
+    const old = await supabase
+      .from("agents")
+      .select("id, name, whatsapp, photo_path, is_active, is_trusted, listings(count)")
+      .order("created_at", { ascending: false });
+    agents = (old.data ?? []).map((a) => ({
+      ...a,
+      long_time_poster: false,
+      still_posting: false,
+      students_confirmed: a.is_trusted,
+    })) as typeof agents;
+    error = old.error;
+  }
 
   return (
     <div>
