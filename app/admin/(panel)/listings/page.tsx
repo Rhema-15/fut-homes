@@ -71,7 +71,7 @@ export default async function ListingsPage() {
                 <Link href={`/admin/listings/${l.id}`} className="text-sm underline">
                   Edit
                 </Link>
-                <form action={setListingStatus.bind(null, l.id, l.status === "taken" ? "available" : "taken")}>
+                <form action={setListingStatus.bind(null, l.id, l.status === "taken" ? "available" : "taken", "/admin/listings")}>
                   <button type="submit" className="text-xs text-neutral-600 underline">
                     {l.status === "taken" ? "Mark available" : "Mark taken"}
                   </button>

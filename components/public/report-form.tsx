@@ -13,8 +13,8 @@ const REASONS = [
 
 // No database: the report opens a WhatsApp chat to FUT Homes with
 // everything already typed in. The student just presses send.
-export default function ReportForm({ listing, agent }: { listing: string; agent: string }) {
-  const [reason, setReason] = useState(REASONS[0]);
+export default function ReportForm({ listing, agent, reason: initialReason }: { listing: string; agent: string; reason?: string }) {
+  const [reason, setReason] = useState(initialReason === "taken" ? REASONS[2] : REASONS[0]);
   const [ref, setRef] = useState(listing);
   const [details, setDetails] = useState("");
 

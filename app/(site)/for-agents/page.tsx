@@ -34,7 +34,7 @@ const STEPS = [
 const MESSAGE = `Hi FUT Homes, I'm an agent and I'd like to list my rooms.
 Name:
 Areas I cover:
-I will never ask a student to pay before they have inspected the room.`;
+I will never ask a student to pay before they have inspected the room, and I'll tell you when a room is taken.`;
 
 export default function ForAgentsPage() {
   return (
@@ -85,6 +85,10 @@ export default function ForAgentsPage() {
       <section className="flex flex-col gap-3 rounded-lg border border-line bg-white p-4">
         <p className="font-semibold">Our one rule</p>
         <p className="text-slate">I will never ask a student to pay before they have inspected the room.</p>
+        <p className="text-slate">
+          And when a room is taken, message us straight away so students don&apos;t waste a trip. We&apos;ll also check
+          in with you weekly.
+        </p>
         <a
           href={whatsappLink(FUT_HOMES_WHATSAPP, MESSAGE)}
           target="_blank"

@@ -37,28 +37,48 @@ export type PublicListing = {
   video_path: string | null;
   video_seconds: number | null;
   created_at: string;
+  confirmed_at: string | null;
   agent: PublicAgent;
   photos: string[];
 };
 
 const LISTING_COLS =
   "id, title, room_type, campus, area, distance_km, price, fees_note, description, status, video_path, video_seconds, created_at, ";
-const SELECT =
-  LISTING_COLS +
+const AGENT_AND_PHOTOS =
   "agents!inner(id, name, whatsapp, photo_path, is_trusted, long_time_poster, still_posting, students_confirmed, created_at), listing_photos(path, position)";
-// Before SQL 005 is run the check columns don't exist yet: fall back to
-// the old Trusted tick so the site keeps working.
-const SELECT_OLD =
-  LISTING_COLS + "agents!inner(id, name, whatsapp, photo_path, is_trusted, created_at), listing_photos(path, position)";
+const SELECT = LISTING_COLS + "confirmed_at, " + AGENT_AND_PHOTOS;
+// Until SQL 006 is run there's no confirmed_at column: fall back to the
+// old query (no freshness, no auto-hide) so the site keeps working.
+const SELECT_OLD = LISTING_COLS + AGENT_AND_PHOTOS;
 
-async function withFallback<T>(build: (select: string) => PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>) {
-  const first = await build(SELECT);
-  if (first.error?.code === "42703") return build(SELECT_OLD);
+type Result<T> = PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>;
+
+async function withFallback<T>(build: (select: string, hasConfirmed: boolean) => Result<T>) {
+  const first = await build(SELECT, true);
+  if (first.error?.code === "42703") return build(SELECT_OLD, false);
   return first;
 }
 
+// Rooms hide from search once they haven't been confirmed for this long.
+export const HIDE_AFTER_DAYS = 14;
+// Admin is asked to re-check rooms after this long.
+export const CHECK_AFTER_DAYS = 7;
 
-type Row = Omit<PublicListing, "agent" | "photos"> & {
+function daysAgoIso(days: number) {
+  return new Date(Date.now() - days * 86_400_000).toISOString();
+}
+
+// Available and recently confirmed, or taken in the last 7 days.
+function visibleFilter(hasConfirmed: boolean) {
+  const taken = `taken_at.gt."${daysAgoIso(7)}"`;
+  return hasConfirmed
+    ? `and(status.eq.available,confirmed_at.gt."${daysAgoIso(HIDE_AFTER_DAYS)}"),${taken}`
+    : `status.eq.available,${taken}`;
+}
+
+
+type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at"> & {
+  confirmed_at?: string | null;
   agents: Omit<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed"> &
     Partial<Pick<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed">>;
   listing_photos: { path: string; position: number }[];
@@ -68,6 +88,7 @@ function shape(row: Row): PublicListing {
   const { agents, listing_photos, ...rest } = row;
   return {
     ...rest,
+    confirmed_at: rest.confirmed_at ?? null,
     distance_km: rest.distance_km === null ? null : Number(rest.distance_km),
     agent: {
       ...agents,
@@ -120,15 +141,15 @@ export function filtersToQuery(filters: Partial<Filters>): string {
 
 export async function searchListings(filters: Filters, limit = 60): Promise<PublicListing[]> {
   await connection();
-  const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString();
-  const { data, error } = await withFallback<Row[]>((select) => {
+  const { data, error } = await withFallback<Row[]>((select, hasConfirmed) => {
     let query = publicClient().from("listings").select(select).eq("agents.is_active", true);
     if (filters.campus) query = query.eq("campus", filters.campus);
     if (filters.type) query = query.eq("room_type", filters.type);
     if (filters.max) query = query.lte("price", filters.max);
 
     // Taken rooms stay visible (greyed out) for 7 days, then drop off.
-    query = query.or(`status.eq.available,taken_at.gt.${weekAgo}`);
+    // Rooms not confirmed for 14 days hide until Rhema confirms them.
+    query = query.or(visibleFilter(hasConfirmed));
 
     // Taken rooms always go to the bottom.
     query = query.order("status", { ascending: true });
@@ -136,7 +157,7 @@ export async function searchListings(filters: Filters, limit = 60): Promise<Publ
     else if (filters.sort === "new") query = query.order("created_at", { ascending: false });
     else query = query.order("distance_km", { ascending: true, nullsFirst: false }).order("price", { ascending: true });
 
-    return query.limit(limit) as unknown as PromiseLike<{ data: Row[] | null; error: { code?: string; message: string } | null }>;
+    return query.limit(limit) as unknown as Result<Row[]>;
   });
   if (error) throw new Error(`Couldn't load rooms: ${error.message}`);
   return (data ?? []).map(shape);
@@ -144,16 +165,15 @@ export async function searchListings(filters: Filters, limit = 60): Promise<Publ
 
 export async function newestListings(limit = 4): Promise<PublicListing[]> {
   await connection();
-  const { data, error } = await withFallback<Row[]>(
-    (select) =>
-      publicClient()
-        .from("listings")
-        .select(select)
-        .eq("agents.is_active", true)
-        .eq("status", "available")
-        .order("created_at", { ascending: false })
-        .limit(limit) as unknown as PromiseLike<{ data: Row[] | null; error: { code?: string; message: string } | null }>,
-  );
+  const { data, error } = await withFallback<Row[]>((select, hasConfirmed) => {
+    let query = publicClient()
+      .from("listings")
+      .select(select)
+      .eq("agents.is_active", true)
+      .eq("status", "available");
+    if (hasConfirmed) query = query.gt("confirmed_at", daysAgoIso(HIDE_AFTER_DAYS));
+    return query.order("created_at", { ascending: false }).limit(limit) as unknown as Result<Row[]>;
+  });
   if (error) throw new Error(`Couldn't load rooms: ${error.message}`);
   return (data ?? []).map(shape);
 }
@@ -168,7 +188,7 @@ export async function getListing(id: string): Promise<PublicListing | null> {
         .select(select)
         .eq("id", id)
         .eq("agents.is_active", true)
-        .limit(1) as unknown as PromiseLike<{ data: Row[] | null; error: { code?: string; message: string } | null }>,
+        .limit(1) as unknown as Result<Row[]>,
   );
   if (error) throw new Error(`Couldn't load the room: ${error.message}`);
   return data?.[0] ? shape(data[0]) : null;

@@ -6,8 +6,8 @@ import ShareRoom from "@/components/public/share-room";
 import { shareData } from "@/lib/share";
 import { type AgentChecks, badgeLevel } from "@/lib/agent-checks";
 import { createClient } from "@/lib/supabase/server";
-import { listingCode } from "@/lib/options";
-import { deleteListing, setListingPublished, setListingStatus, updateListing } from "../actions";
+import { confirmedAgo, listingCode } from "@/lib/options";
+import { confirmListing, deleteListing, setListingPublished, setListingStatus, updateListing } from "../actions";
 import ListingForm from "../listing-form";
 
 export const instant = false;
@@ -20,7 +20,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
     supabase
       .from("listings")
       .select(
-        "id, agent_id, title, room_type, campus, area, distance_km, price, fees_note, description, video_path, video_seconds, status, is_published, agents(long_time_poster, still_posting, students_confirmed), listing_photos(path, position)",
+        "id, agent_id, title, room_type, campus, area, distance_km, price, fees_note, description, video_path, video_seconds, status, is_published, confirmed_at, agents(long_time_poster, still_posting, students_confirmed), listing_photos(path, position)",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -46,8 +46,19 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
         </Link>
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <form action={setListingStatus.bind(null, listing.id, taken ? "available" : "taken")}>
+      {!taken && listing.confirmed_at && (
+        <p className="mt-4 text-sm text-neutral-600">{confirmedAgo(listing.confirmed_at)}</p>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {!taken && (
+          <form action={confirmListing.bind(null, listing.id, `/admin/listings/${listing.id}`)}>
+            <button type="submit" className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium">
+              Confirmed available today
+            </button>
+          </form>
+        )}
+        <form action={setListingStatus.bind(null, listing.id, taken ? "available" : "taken", `/admin/listings/${listing.id}`)}>
           <button
             type="submit"
             className={

@@ -24,5 +24,5 @@ export default function ReportPage({ searchParams }: PageProps<"/report">) {
 async function ReportFormFromParams({ searchParams }: { searchParams: PageProps<"/report">["searchParams"] }) {
   const params = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v.slice(0, 80) : "");
-  return <ReportForm listing={one(params.listing)} agent={one(params.agent)} />;
+  return <ReportForm listing={one(params.listing)} agent={one(params.agent)} reason={one(params.reason)} />;
 }

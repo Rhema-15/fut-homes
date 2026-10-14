@@ -14,6 +14,7 @@ import {
   formatDuration,
   formatNaira,
   listingCode,
+  confirmedAgo,
   photoUrl,
 } from "@/lib/options";
 import { getListing, similarListings } from "@/lib/public-data";
@@ -78,6 +79,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         >
           {taken ? "Taken" : "Available"}
         </span>
+        {!taken && listing.confirmed_at && <span className="text-sm text-muted">{confirmedAgo(listing.confirmed_at)}</span>}
         <h1 className="text-[28px] leading-[34px] font-extrabold tracking-[-0.01em] min-[768px]:text-[34px] min-[768px]:leading-10">
           {listing.title}
         </h1>
@@ -148,7 +150,15 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         <SafetyWarning />
       </section>
 
-      <section className="px-4 pt-2 pb-8 min-[768px]:px-0">
+      <section className="flex flex-col items-start px-4 pt-2 pb-8 min-[768px]:px-0">
+        {!taken && (
+          <Link
+            href={`/report?reason=taken&listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
+            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-700 underline underline-offset-4"
+          >
+            Already taken? Tell us
+          </Link>
+        )}
         <Link
           href={`/report?listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
           className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-error"

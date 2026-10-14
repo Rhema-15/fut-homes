@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import NeedsChecking from "@/components/admin/needs-checking";
 
 export const instant = false;
 
@@ -52,6 +53,8 @@ export default async function AdminPage() {
           Import from chat
         </Link>
       </div>
+
+      <NeedsChecking />
 
       {(agents.error || listings.error) && (
         <p className="mt-6 text-sm text-red-600">

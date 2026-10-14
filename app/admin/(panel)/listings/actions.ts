@@ -111,13 +111,26 @@ export async function updateListing(id: string, _prev: FormState, formData: Form
   redirect("/admin/listings");
 }
 
-export async function setListingStatus(id: string, status: "available" | "taken") {
+export async function setListingStatus(id: string, status: "available" | "taken", back = "/admin/listings") {
   const supabase = await createClient();
+  const now = new Date().toISOString();
   await supabase
     .from("listings")
-    .update({ status, taken_at: status === "taken" ? new Date().toISOString() : null })
+    .update(
+      status === "taken"
+        ? { status, taken_at: now }
+        : // Marking available again means it was just checked.
+          { status, taken_at: null, confirmed_at: now },
+    )
     .eq("id", id);
-  redirect("/admin/listings");
+  redirect(back);
+}
+
+// The agent said the room is still free: reset the 7/14-day clocks.
+export async function confirmListing(id: string, back = "/admin") {
+  const supabase = await createClient();
+  await supabase.from("listings").update({ confirmed_at: new Date().toISOString() }).eq("id", id);
+  redirect(back);
 }
 
 export async function setListingPublished(id: string, isPublished: boolean) {

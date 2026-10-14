@@ -77,3 +77,12 @@ export function photoUrl(path: string): string {
 export function videoUrl(path: string): string {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/videos/${path}`;
 }
+
+// "Confirmed available today / yesterday / 5 days ago"
+export function confirmedAgo(iso: string | null): string | null {
+  if (!iso) return null;
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "Confirmed available today";
+  if (days === 1) return "Confirmed available yesterday";
+  return `Confirmed available ${days} days ago`;
+}
