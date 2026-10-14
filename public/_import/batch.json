@@ -1,0 +1,33 @@
+{
+  "note": "Listings prepared in the FUT Homes chat. Import from /admin/import.",
+  "listings": [
+    {
+      "key": "yommys-classy-gk",
+      "agentMatch": "yommy",
+      "title": "Classy self-contain in GK",
+      "room_type": "self_contain",
+      "campus": "gidan_kwano",
+      "area": null,
+      "distance_km": null,
+      "price": 850000,
+      "fees_note": null,
+      "description": "POP ceiling, water heater, wardrobe, kitchen cabinets with gas burner, spacious kitchen and rooms. Borehole, private transformer. Fenced and gated with a smart security system. Quiet compound.",
+      "video": { "file": "yommys-classy-gk.mp4", "seconds": 54 },
+      "photos": ["yommys-classy-gk-5.webp", "yommys-classy-gk-1.webp", "yommys-classy-gk-0.webp", "yommys-classy-gk-4.webp", "yommys-classy-gk-2.webp"]
+    },
+    {
+      "key": "gracious-spacious-gk",
+      "agentMatch": "gracious",
+      "title": "Spacious self-contain in GK",
+      "room_type": "self_contain",
+      "campus": "gidan_kwano",
+      "area": null,
+      "distance_km": null,
+      "price": 260000,
+      "fees_note": null,
+      "description": "Spacious self-contain with running water and a WC toilet.",
+      "video": { "file": "gracious-spacious-gk.mp4", "seconds": 21 },
+      "photos": ["gracious-spacious-gk-0.webp", "gracious-spacious-gk-3.webp", "gracious-spacious-gk-4.webp"]
+    }
+  ]
+}

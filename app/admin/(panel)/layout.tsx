@@ -26,6 +26,9 @@ export default async function AdminPanelLayout({ children }: LayoutProps<"/admin
             <Link href="/admin/listings" className="hover:underline">
               Listings
             </Link>
+            <Link href="/admin/import" className="hover:underline">
+              Import
+            </Link>
           </nav>
           <form action={logout} className="ml-auto">
             <button type="submit" className="text-sm text-neutral-600 hover:underline">
