@@ -12,8 +12,17 @@
       "price": 850000,
       "fees_note": null,
       "description": "POP ceiling, water heater, wardrobe, kitchen cabinets with gas burner, spacious kitchen and rooms. Borehole, private transformer. Fenced and gated with a smart security system. Quiet compound.",
-      "video": { "file": "yommys-classy-gk.mp4", "seconds": 54 },
-      "photos": ["yommys-classy-gk-5.webp", "yommys-classy-gk-1.webp", "yommys-classy-gk-0.webp", "yommys-classy-gk-4.webp", "yommys-classy-gk-2.webp"]
+      "video": {
+        "file": "yommys-classy-gk.mp4",
+        "seconds": 54
+      },
+      "photos": [
+        "yommys-classy-gk-5.webp",
+        "yommys-classy-gk-1.webp",
+        "yommys-classy-gk-0.webp",
+        "yommys-classy-gk-4.webp",
+        "yommys-classy-gk-2.webp"
+      ]
     },
     {
       "key": "gracious-spacious-gk",
@@ -26,8 +35,36 @@
       "price": 260000,
       "fees_note": null,
       "description": "Spacious self-contain with running water and a WC toilet.",
-      "video": { "file": "gracious-spacious-gk.mp4", "seconds": 21 },
-      "photos": ["gracious-spacious-gk-0.webp", "gracious-spacious-gk-3.webp", "gracious-spacious-gk-4.webp"]
+      "video": {
+        "file": "gracious-spacious-gk.mp4",
+        "seconds": 21
+      },
+      "photos": [
+        "gracious-spacious-gk-0.webp",
+        "gracious-spacious-gk-3.webp",
+        "gracious-spacious-gk-4.webp"
+      ]
+    },
+    {
+      "key": "roommate-male-kff",
+      "agentMatch": "",
+      "title": "Male roommate needed, shared self-con near KFF",
+      "room_type": "shared",
+      "campus": null,
+      "area": "Near KFF",
+      "distance_km": null,
+      "price": 170000,
+      "fees_note": null,
+      "description": "Looking for a second male roommate. Price shown is your share of the rent. WC toilet, running water, kitchen sink. Walking distance to school.",
+      "video": {
+        "file": "roommate-male-kff.mp4",
+        "seconds": 10
+      },
+      "photos": [
+        "roommate-male-kff-0.webp",
+        "roommate-male-kff-2.webp",
+        "roommate-male-kff-5.webp"
+      ]
     }
   ]
 }

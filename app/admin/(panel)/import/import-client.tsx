@@ -9,7 +9,7 @@ type Item = {
   agentMatch: string;
   title: string;
   room_type: RoomType;
-  campus: Campus;
+  campus: Campus | null; // null: pick on this page
   area: string | null;
   distance_km: number | null;
   price: number;
@@ -33,6 +33,7 @@ export default function ImportClient({
   const [items, setItems] = useState<Item[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [agentFor, setAgentFor] = useState<Record<string, string>>({});
+  const [campusFor, setCampusFor] = useState<Record<string, Campus>>({});
   const [status, setStatus] = useState<Record<string, { s: Status; msg?: string }>>({});
 
   useEffect(() => {
@@ -43,7 +44,9 @@ export default function ImportClient({
         const picks: Record<string, string> = {};
         const st: Record<string, { s: Status }> = {};
         for (const item of data.listings) {
-          const match = agents.find((a) => a.name.toLowerCase().includes(item.agentMatch.toLowerCase()));
+          const match = item.agentMatch
+            ? agents.find((a) => a.name.toLowerCase().includes(item.agentMatch.toLowerCase()))
+            : undefined;
           if (match) picks[item.key] = match.id;
           const dup = existing.some(
             (e) => e.title === item.title && e.price === item.price && (!match || e.agent_id === match.id),
@@ -63,6 +66,8 @@ export default function ImportClient({
   async function importOne(item: Item) {
     const agentId = agentFor[item.key];
     if (!agentId) return set(item.key, "error", "Pick the agent first.");
+    const campus = item.campus ?? campusFor[item.key];
+    if (!campus) return set(item.key, "error", "Pick the campus first.");
     set(item.key, "working", "Checking login…");
     const supabase = createClient();
     const { data: user, error: userError } = await supabase.auth.getUser();
@@ -101,7 +106,7 @@ export default function ImportClient({
           agent_id: agentId,
           title: item.title,
           room_type: item.room_type,
-          campus: item.campus,
+          campus,
           area: item.area,
           distance_km: item.distance_km,
           price: item.price,
@@ -156,7 +161,8 @@ export default function ImportClient({
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-medium">{item.title}</p>
                   <p className="text-neutral-500">
-                    {ROOM_TYPES[item.room_type]} · {CAMPUSES[item.campus]} · {formatNaira(item.price)}/yr
+                    {ROOM_TYPES[item.room_type]}
+                    {item.campus ? ` · ${CAMPUSES[item.campus]}` : ""} · {formatNaira(item.price)}/yr
                   </p>
                   <p className="text-neutral-500">
                     {item.photos.length} photos{item.video ? " + video" : ""}
@@ -180,6 +186,25 @@ export default function ImportClient({
                   ))}
                 </select>
               </label>
+
+              {!item.campus && (
+                <label className="mt-3 flex flex-col gap-1 text-sm">
+                  Campus
+                  <select
+                    value={campusFor[item.key] ?? ""}
+                    onChange={(e) => setCampusFor((cur) => ({ ...cur, [item.key]: e.target.value as Campus }))}
+                    disabled={st.s === "done" || st.s === "working"}
+                    className="rounded-md border border-neutral-300 px-3 py-2 text-base"
+                  >
+                    <option value="">Choose campus</option>
+                    {Object.entries(CAMPUSES).map(([v, label]) => (
+                      <option key={v} value={v}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               <div className="mt-3 text-sm">
                 {st.s === "done" && st.msg && (
