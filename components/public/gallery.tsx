@@ -11,14 +11,14 @@ type Props = {
   videoPath: string | null;
   videoLabel: string | null; // e.g. "0:45"
   backHref: string;
+  shareButton?: React.ReactNode;
 };
 
 // Swipeable stills (CSS scroll-snap, no library). On a computer (mouse,
 // no swiping) arrow buttons and the keyboard's arrow keys move between
 // photos. The video only downloads when the student taps "Watch room video".
-export default function Gallery({ photos, title, taken, videoPath, videoLabel, backHref }: Props) {
+export default function Gallery({ photos, title, taken, videoPath, videoLabel, backHref, shareButton }: Props) {
   const [index, setIndex] = useState(0);
-  const [shared, setShared] = useState(false);
   const strip = useRef<HTMLDivElement>(null);
   const player = useRef<HTMLDialogElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -28,21 +28,6 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
     if (!el) return;
     const next = Math.max(0, Math.min(photos.length - 1, i));
     el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
-  }
-
-  async function share() {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `${title} · FUT Homes`, url });
-        return;
-      }
-      await navigator.clipboard.writeText(url);
-      setShared(true);
-      setTimeout(() => setShared(false), 2000);
-    } catch {
-      /* user cancelled */
-    }
   }
 
   return (
@@ -107,19 +92,7 @@ export default function Gallery({ photos, title, taken, videoPath, videoLabel, b
       >
         <Icon name="arrow-left" size={22} />
       </a>
-      <button
-        type="button"
-        onClick={share}
-        aria-label="Share this room"
-        className="absolute top-3 right-3 flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink shadow-float"
-      >
-        <Icon name={shared ? "check" : "share"} size={20} />
-      </button>
-      {shared && (
-        <span role="status" className="absolute top-16 right-3 rounded-full bg-scrim px-2 py-1 text-xs font-semibold text-white">
-          Link copied
-        </span>
-      )}
+      {shareButton && <div className="absolute top-3 right-3">{shareButton}</div>}
 
       {videoPath && (
         <button

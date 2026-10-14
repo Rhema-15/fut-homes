@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AgentBadge from "@/components/public/agent-badge";
 import Gallery from "@/components/public/gallery";
+import ShareRoom from "@/components/public/share-room";
 import { Icon } from "@/components/public/icons";
 import { AgentAvatar, ListingGrid } from "@/components/public/listing-card";
 import { SafetyWarning } from "@/components/public/site-chrome";
@@ -16,6 +17,7 @@ import {
   photoUrl,
 } from "@/lib/options";
 import { getListing, similarListings } from "@/lib/public-data";
+import { shareData } from "@/lib/share";
 
 export const instant = false;
 
@@ -63,6 +65,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         videoPath={listing.video_path}
         videoLabel={formatDuration(listing.video_seconds)}
         backHref={`/rooms?campus=${listing.campus}`}
+        shareButton={taken ? undefined : <ShareRoom {...shareData({ ...listing, is_trusted: listing.agent.is_trusted })} />}
       />
 
       <section className="flex flex-col gap-2 px-4 pt-5 min-[768px]:px-0">
