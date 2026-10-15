@@ -6,6 +6,7 @@ import { type FormState, pathList, saveError, text, videoPath } from "@/lib/form
 import { CAMPUSES, ROOM_TYPES, isOneOf, normalizeWhatsapp } from "@/lib/options";
 import { badgeLevel } from "@/lib/agent-checks";
 import { cleanAmenities } from "@/lib/amenities";
+import { missingDetails } from "@/lib/listing-state";
 
 type Parsed =
   | { error: string }
@@ -14,8 +15,8 @@ type Parsed =
       photos: string[];
     };
 
-function parse(formData: FormData, allowDraft = false): Parsed {
-  const draft = allowDraft && formData.get("draft") === "on";
+function parse(formData: FormData): Parsed {
+  const draft = formData.get("draft") === "on";
   const agentId = text(formData, "agent_id");
   const title = text(formData, "title");
   const roomType = text(formData, "room_type");
@@ -33,25 +34,29 @@ function parse(formData: FormData, allowDraft = false): Parsed {
   const photos = pathList(formData, "photos");
   const video = videoPath(formData, "video");
 
-  if (!agentId) return { error: "Pick the agent for this room." };
-  if (!title) return { error: "Give the listing a short title." };
-  if (!isOneOf(ROOM_TYPES, roomType)) return { error: "Pick a room type." };
-  if (!isOneOf(CAMPUSES, campus)) return { error: "Pick the nearest campus." };
-  if (!priceDigits && !draft) return { error: "Enter the rent, or tick \"Save as hidden draft\"." };
+  // Nothing is required: a room with details missing saves hidden, with a
+  // note of what's missing, so Rhema can come back to it.
+  if (roomType && !isOneOf(ROOM_TYPES, roomType)) return { error: "Pick a room type from the list." };
+  if (campus && !isOneOf(CAMPUSES, campus)) return { error: "Pick a campus from the list." };
   if (distance !== null && (!Number.isFinite(distance) || distance < 0 || distance > 50)) {
     return { error: "Distance should be in km, like 1.2." };
   }
-  if (photos.length === 0 && !draft) return { error: "Add at least one photo, or tick \"Save as hidden draft\"." };
+  const price = priceDigits ? Number(priceDigits) : null;
+  const missing = missingDetails({ agent_id: agentId, room_type: roomType || null, campus: campus || null, price, photoCount: photos.length });
+  const hide = draft || missing.length > 0;
+  const autoTitle =
+    title ||
+    [roomType && isOneOf(ROOM_TYPES, roomType) ? ROOM_TYPES[roomType] : "Room", area ? `in ${area}` : ""].filter(Boolean).join(" ");
 
   return {
     photos,
     fields: {
-      agent_id: agentId,
-      title,
-      room_type: roomType,
-      campus,
+      agent_id: agentId || null,
+      title: autoTitle,
+      room_type: roomType || null,
+      campus: campus || null,
       area: area || null,
-      price: Number(priceDigits || 0),
+      price,
       distance_km: distance === null ? null : Math.round(distance * 10) / 10,
       fees_note: feesNote || null,
       agent_fee: agentFeeDigits ? Number(agentFeeDigits) : null,
@@ -60,22 +65,30 @@ function parse(formData: FormData, allowDraft = false): Parsed {
       description: description || null,
       video_path: video,
       video_seconds: video && videoSecondsDigits ? Number(videoSecondsDigits) : null,
-      ...(draft ? { is_published: false } : {}),
+      admin_note: text(formData, "admin_note") || null,
+      ...(hide ? { is_published: false } : {}),
     },
   };
 }
 
 // Before SQL 007 is run these columns don't exist yet: save without them.
-const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee"];
+const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee", "admin_note"];
 function missingColumn(error: { code?: string; message: string } | null) {
   return !!error && (error.code === "42703" || error.code === "PGRST204");
 }
+// Before SQL 008 the database still insists on type, campus and price.
+function needsSql008(error: { code?: string; message: string } | null) {
+  return !!error && (error.code === "23502" || error.code === "23514");
+}
+const SQL_008 =
+  "Some details are missing and the database doesn't allow that yet. Run SQL 008 in Supabase once (ask Claude for it), then save again.";
+
 function withoutNewFields(fields: Parsed & { fields: object }) {
   return Object.fromEntries(Object.entries(fields.fields).filter(([k]) => !NEW_FIELDS.includes(k)));
 }
 
 export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = parse(formData, true);
+  const parsed = parse(formData);
   if ("error" in parsed) return parsed;
 
   const supabase = await createClient();
@@ -116,6 +129,7 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   if (missingColumn(error)) {
     ({ data: listing, error } = await supabase.from("listings").insert(withoutNewFields(parsed)).select("id").single());
   }
+  if (needsSql008(error)) return { error: SQL_008 };
   if (error || !listing) return { error: saveError("listing", error?.message ?? "unknown error") };
 
   const { error: photoError } = parsed.photos.length
@@ -132,7 +146,7 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
 
   // "Save & add another" opens a fresh form (the timestamp resets it).
   if (formData.get("after") === "new") {
-    redirect(`/admin/listings/new?added=${Date.now()}&agent=${parsed.fields.agent_id}`);
+    redirect(`/admin/listings/new?added=${Date.now()}${parsed.fields.agent_id ? `&agent=${parsed.fields.agent_id}` : ""}`);
   }
   redirect("/admin/listings");
 }
@@ -150,14 +164,17 @@ export async function updateListing(id: string, _prev: FormState, formData: Form
 
   let { error } = await supabase.from("listings").update(parsed.fields).eq("id", id);
   if (missingColumn(error)) ({ error } = await supabase.from("listings").update(withoutNewFields(parsed)).eq("id", id));
+  if (needsSql008(error)) return { error: SQL_008 };
   if (error) return { error: saveError("listing", error.message) };
 
   // Replace the photo list with what's on the form now.
   const { error: delError } = await supabase.from("listing_photos").delete().eq("listing_id", id);
   if (delError) return { error: saveError("photos", delError.message) };
-  const { error: photoError } = await supabase
-    .from("listing_photos")
-    .insert(parsed.photos.map((path, position) => ({ listing_id: id, path, position })));
+  const { error: photoError } = parsed.photos.length
+    ? await supabase
+        .from("listing_photos")
+        .insert(parsed.photos.map((path, position) => ({ listing_id: id, path, position })))
+    : { error: null };
   if (photoError) return { error: saveError("photos", photoError.message) };
 
   // Tidy up files that were removed, so storage doesn't fill up.
@@ -195,9 +212,27 @@ export async function confirmListing(id: string, back = "/admin") {
   redirect(back);
 }
 
-export async function setListingPublished(id: string, isPublished: boolean) {
+// Hide: keep the reason typed next to the button. Show: only once the room
+// has everything students need; otherwise say what's missing.
+export async function setListingPublished(id: string, isPublished: boolean, formData?: FormData) {
   const supabase = await createClient();
-  await supabase.from("listings").update({ is_published: isPublished }).eq("id", id);
+  if (!isPublished) {
+    const note = formData ? text(formData, "admin_note") : "";
+    let { error } = await supabase.from("listings").update({ is_published: false, admin_note: note || null }).eq("id", id);
+    if (missingColumn(error)) ({ error } = await supabase.from("listings").update({ is_published: false }).eq("id", id));
+    redirect(`/admin/listings/${id}`);
+  }
+  const { data: l } = await supabase
+    .from("listings")
+    .select("agent_id, room_type, campus, price, listing_photos(path)")
+    .eq("id", id)
+    .single();
+  const missing = l
+    ? missingDetails({ ...l, photoCount: (l.listing_photos as { path: string }[]).length })
+    : ["listing"];
+  if (missing.length) redirect(`/admin/listings/${id}?missing=${encodeURIComponent(missing.join(", "))}`);
+  let { error } = await supabase.from("listings").update({ is_published: true, admin_note: null }).eq("id", id);
+  if (missingColumn(error)) ({ error } = await supabase.from("listings").update({ is_published: true }).eq("id", id));
   redirect(`/admin/listings/${id}`);
 }
 

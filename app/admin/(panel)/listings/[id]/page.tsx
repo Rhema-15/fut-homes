@@ -10,19 +10,25 @@ import { confirmedAgo, listingCode } from "@/lib/options";
 import { confirmListing, deleteListing, setListingPublished, setListingStatus, updateListing } from "../actions";
 import ListingForm from "../listing-form";
 import { knownAreas } from "@/lib/admin-areas";
+import { missingDetails } from "@/lib/listing-state";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Edit listing · FUT Homes admin", robots: { index: false } };
 
 // The SQL 007 fields are read separately: before that SQL is run the
 // query just fails and the form shows them empty.
-async function loadExtras(supabase: Awaited<ReturnType<typeof createClient>>, id: string) {
-  const { data } = await supabase.from("listings").select("amenities, agent_fee, caution_fee").eq("id", id).maybeSingle();
-  return (data ?? {}) as { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null };
+type Extras = { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null; admin_note?: string | null };
+async function loadExtras(supabase: Awaited<ReturnType<typeof createClient>>, id: string): Promise<Extras> {
+  for (const cols of ["amenities, agent_fee, caution_fee, admin_note", "amenities, agent_fee, caution_fee", "admin_note"]) {
+    const { data, error } = await supabase.from("listings").select(cols).eq("id", id).maybeSingle();
+    if (!error) return (data ?? {}) as Extras;
+  }
+  return {};
 }
 
-export default async function EditListingPage({ params }: PageProps<"/admin/listings/[id]">) {
+export default async function EditListingPage({ params, searchParams }: PageProps<"/admin/listings/[id]">) {
   const { id } = await params;
+  const { missing: cantShow } = await searchParams;
   const supabase = await createClient();
   const [{ data: listing }, { data: agents }, extras] = await Promise.all([
     supabase
@@ -42,6 +48,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
     .sort((a, b) => a.position - b.position)
     .map((p) => p.path);
   const taken = listing.status === "taken";
+  const missing = missingDetails({ ...listing, photoCount: photos.length });
 
   return (
     <div className="max-w-md">
@@ -79,13 +86,33 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
             {taken ? "Mark as available again" : "Mark as taken"}
           </button>
         </form>
-        <form action={setListingPublished.bind(null, listing.id, !listing.is_published)}>
-          <button type="submit" className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium">
-            {listing.is_published ? "Hide from site" : "Show on site"}
+        {!listing.is_published && (
+          <form action={setListingPublished.bind(null, listing.id, true)}>
+            <button type="submit" className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium">
+              Show on site
+            </button>
+          </form>
+        )}
+      </div>
+      {listing.is_published && (
+        <form action={setListingPublished.bind(null, listing.id, false)} className="mt-3 flex gap-2">
+          <input
+            name="admin_note"
+            aria-label="Why are you hiding it?"
+            placeholder="Why hide it? e.g. agent not answering"
+            className="min-w-0 flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          />
+          <button type="submit" className="shrink-0 rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium">
+            Hide from site
           </button>
         </form>
-      </div>
-      {!taken && (
+      )}
+      {typeof cantShow === "string" && cantShow && (
+        <p role="alert" className="mt-2 text-sm text-red-600">
+          Can&apos;t show it yet. Fill in: {cantShow}. Then save and tap Show on site.
+        </p>
+      )}
+      {!taken && missing.length === 0 && (
         <div className="mt-4">
           <ShareRoom
             variant="button"
@@ -108,7 +135,11 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
       )}
 
       {!listing.is_published && (
-        <p className="mt-2 text-sm text-red-600">Hidden: students can&apos;t see this listing.</p>
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <p className="font-medium">Hidden: students can&apos;t see this listing.</p>
+          <p>Why: {extras.admin_note || "no reason noted"}</p>
+          {missing.length > 0 && <p>Missing: {missing.join(", ")}</p>}
+        </div>
       )}
 
       <ListingForm
@@ -132,6 +163,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
           video_path: listing.video_path,
           video_seconds: listing.video_seconds,
           photos,
+          admin_note: extras.admin_note ?? null,
         }}
       />
 

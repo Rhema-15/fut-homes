@@ -43,13 +43,13 @@ const sameArea = (a: string | null, b: string | undefined) => {
 };
 
 export type ListingDefaults = {
-  agent_id: string;
+  agent_id: string | null;
   title: string;
-  room_type: string;
-  campus: string;
+  room_type: string | null;
+  campus: string | null;
   area: string | null;
   distance_km: number | null;
-  price: number;
+  price: number | null;
   fees_note: string | null;
   agent_fee: number | null;
   caution_fee: number | null;
@@ -58,6 +58,7 @@ export type ListingDefaults = {
   video_path: string | null;
   video_seconds: number | null;
   photos: string[];
+  admin_note?: string | null;
 };
 
 const initialState: FormState = { error: null };
@@ -311,7 +312,6 @@ export default function ListingForm({
         Agent
         <select
           name="agent_id"
-          required
           defaultValue={listing?.agent_id ?? (newAgent ? NEW_AGENT : "")}
           onChange={(e) => setNewAgent(e.target.value === NEW_AGENT)}
           className={input}
@@ -358,13 +358,13 @@ export default function ListingForm({
 
       <label className="flex flex-col gap-1 text-sm">
         Title
-        <input name="title" required defaultValue={listing?.title} placeholder="Self-contain with running water" className={input} />
+        <input name="title" defaultValue={listing?.title} placeholder="Self-contain with running water" className={input} />
       </label>
 
       <div className="grid grid-cols-2 gap-3">
         <label className="flex flex-col gap-1 text-sm">
           Room type
-          <select name="room_type" required defaultValue={listing?.room_type ?? ""} className={input}>
+          <select name="room_type" defaultValue={listing?.room_type ?? ""} className={input}>
             <option value="" disabled>
               Choose
             </option>
@@ -377,7 +377,7 @@ export default function ListingForm({
         </label>
         <label className="flex flex-col gap-1 text-sm">
           Nearest campus
-          <select name="campus" required defaultValue={listing?.campus ?? ""} className={input}>
+          <select name="campus" defaultValue={listing?.campus ?? ""} className={input}>
             <option value="" disabled>
               Choose
             </option>
@@ -413,8 +413,7 @@ export default function ListingForm({
           name="price"
           defaultValue={listing?.price ? listing.price : ""}
           inputMode="numeric"
-          required={!draft}
-          placeholder={draft ? "Not known yet" : "150,000"}
+          placeholder="150,000 (leave empty if not known yet)"
           className={input}
         />
       </label>
@@ -506,14 +505,24 @@ export default function ListingForm({
         </p>
       )}
 
-      {quickAdd && (
-        <label className="flex items-start gap-2 text-sm">
+      <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm">
+        <p className="text-neutral-600">
+          Don&apos;t know something yet? Leave it empty and save. The room stays hidden and the list shows what&apos;s missing.
+        </p>
+        <label className="flex items-start gap-2">
           <input type="checkbox" name="draft" checked={draft} onChange={(e) => setDraft(e.target.checked)} className="mt-0.5 size-4" />
-          <span>
-            Save as hidden draft (no price or photos yet). Students won&apos;t see it until you add them and tap Show.
-          </span>
+          <span>Keep it hidden for now, even if everything is filled in</span>
         </label>
-      )}
+        <label className="flex flex-col gap-1">
+          Note to self (only you see this)
+          <input
+            name="admin_note"
+            defaultValue={listing?.admin_note ?? ""}
+            placeholder="e.g. ask agent for the price and if it has a kitchen"
+            className={input}
+          />
+        </label>
+      </div>
 
       {state.error && (
         <p role="alert" className="text-sm text-red-600">

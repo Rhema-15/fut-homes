@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CAMPUSES, ROOM_TYPES, type Campus, type RoomType, formatNaira, photoUrl } from "@/lib/options";
 import { setListingStatus } from "./actions";
+import { offSiteReason } from "@/lib/listing-state";
 
 export const instant = false;
 export const metadata: Metadata = { title: "Listings · FUT Homes admin", robots: { index: false } };
@@ -10,14 +11,18 @@ export const metadata: Metadata = { title: "Listings · FUT Homes admin", robots
 type Row = {
   id: string;
   title: string;
-  room_type: RoomType;
-  campus: Campus;
+  agent_id: string | null;
+  room_type: RoomType | null;
+  campus: Campus | null;
   area: string | null;
-  price: number;
+  price: number | null;
   status: "available" | "taken";
   video_path: string | null;
   is_published: boolean;
-  agents: { name: string } | null;
+  admin_note?: string | null;
+  confirmed_at?: string | null;
+  taken_at?: string | null;
+  agents: { name: string; is_active: boolean } | null;
   listing_photos: { path: string; position: number }[];
 };
 
@@ -25,13 +30,23 @@ export default async function ListingsPage({ searchParams }: PageProps<"/admin/l
   const { agent } = await searchParams;
   const agentId = typeof agent === "string" && agent ? agent : null;
   const supabase = await createClient();
-  let query = supabase
-    .from("listings")
-    .select("id, title, room_type, campus, area, price, status, video_path, is_published, agents(name), listing_photos(path, position)")
-    .order("created_at", { ascending: false });
-  if (agentId) query = query.eq("agent_id", agentId);
+  const BASE =
+    "id, agent_id, title, room_type, campus, area, price, status, video_path, is_published, agents(name, is_active), listing_photos(path, position)";
+  // Newest columns first; older databases (before SQL 006/008) fall back.
+  const run = (cols: string) => {
+    let query = supabase.from("listings").select(cols).order("created_at", { ascending: false });
+    if (agentId) query = query.eq("agent_id", agentId);
+    return query;
+  };
+  const load = async () => {
+    for (const extra of [", admin_note, confirmed_at, taken_at", ", confirmed_at, taken_at", ""]) {
+      const res = await run(BASE + extra);
+      if (res.error?.code !== "42703") return res;
+    }
+    return run(BASE);
+  };
   const [{ data, error }, { data: agentRows }] = await Promise.all([
-    query,
+    load(),
     supabase.from("agents").select("id, name").order("name"),
   ]);
   const listings = (data ?? []) as unknown as Row[];
@@ -82,6 +97,11 @@ export default async function ListingsPage({ searchParams }: PageProps<"/admin/l
       <ul className="mt-6 divide-y divide-neutral-200 rounded-lg border border-neutral-200">
         {listings.map((l) => {
           const cover = [...l.listing_photos].sort((a, b) => a.position - b.position)[0];
+          const reason = offSiteReason({
+            ...l,
+            photoCount: l.listing_photos.length,
+            agent_active: l.agents?.is_active ?? null,
+          });
           return (
             <li key={l.id} className="flex items-start gap-3 p-3">
               {cover ? (
@@ -95,15 +115,16 @@ export default async function ListingsPage({ searchParams }: PageProps<"/admin/l
                   {l.title}
                 </Link>
                 <p className="text-sm text-neutral-500">
-                  {ROOM_TYPES[l.room_type]} · {l.area ? `${l.area}, ` : ""}
-                  {CAMPUSES[l.campus]}
+                  {l.room_type ? ROOM_TYPES[l.room_type] : "Type ?"} · {l.area ? `${l.area}, ` : ""}
+                  {l.campus ? CAMPUSES[l.campus] : "Campus ?"}
                 </p>
                 <p className="text-sm">
-                  {formatNaira(l.price)}/yr · <span className="text-neutral-500">{l.agents?.name}</span>
+                  {l.price ? `${formatNaira(l.price)}/yr` : "Price ?"} ·{" "}
+                  <span className="text-neutral-500">{l.agents?.name ?? "No agent"}</span>
                   {l.video_path && <span className="ml-2 text-xs text-neutral-500">▶ video</span>}
                   {l.status === "taken" && <span className="ml-2 text-xs text-red-600">Taken</span>}
-                  {!l.is_published && <span className="ml-2 text-xs text-red-600">Hidden</span>}
                 </p>
+                {reason && <p className="mt-1 text-sm text-red-700">{reason}</p>}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 <Link href={`/admin/listings/${l.id}`} className="text-sm underline">
