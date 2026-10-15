@@ -9,6 +9,22 @@ import { parsePost } from "@/lib/parse-post";
 
 const LAST_KEY = "futhomes:last-listing";
 
+export type ExistingListing = {
+  id: string;
+  title: string;
+  price: number;
+  area: string | null;
+  room_type: string;
+  status: string;
+  agent: string;
+};
+
+const sameArea = (a: string | null, b: string | undefined) => {
+  if (!a || !b) return true; // one side unknown: still worth a look
+  const norm = (x: string) => x.toLowerCase().replace(/\s+road$/, "").trim();
+  return norm(a) === norm(b) || norm(a).includes(norm(b)) || norm(b).includes(norm(a));
+};
+
 export type ListingDefaults = {
   agent_id: string;
   title: string;
@@ -37,7 +53,9 @@ export default function ListingForm({
   submitLabel = "Save listing",
   areas = [],
   quickAdd = false,
+  existing = [],
 }: {
+  existing?: ExistingListing[];
   quickAdd?: boolean;
   agents: { id: string; name: string }[];
   areas?: string[];
@@ -51,6 +69,7 @@ export default function ListingForm({
   const [post, setPost] = useState("");
   const [filled, setFilled] = useState<{ got: string[]; check: string[] } | null>(null);
   const [draft, setDraft] = useState(false);
+  const [dupes, setDupes] = useState<ExistingListing[]>([]);
 
   // New listings start with the agent and campus used last time.
   useEffect(() => {
@@ -135,6 +154,15 @@ export default function ListingForm({
     (f.elements.namedItem("description") as HTMLTextAreaElement).value = p.description ?? "";
     if (/total package/i.test(p.feesNote ?? "")) check.push("\"Total package\": rent already includes fees, so leave agent and caution fee empty.");
     setFilled({ got, check });
+
+    // Same price + same type + same area = probably the same room reposted.
+    setDupes(
+      p.price
+        ? existing.filter(
+            (e) => e.price === p.price && (!p.roomType || e.room_type === p.roomType) && sameArea(e.area, p.area),
+          )
+        : [],
+    );
   }
 
   return (
@@ -167,6 +195,7 @@ export default function ListingForm({
                 onClick={() => {
                   setPost("");
                   setFilled(null);
+                  setDupes([]);
                 }}
                 className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
               >
@@ -174,6 +203,27 @@ export default function ListingForm({
               </button>
             )}
           </div>
+          {dupes.length > 0 && (
+            <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+              <p className="font-semibold">Already listed? Same price, type and area as:</p>
+              <ul className="mt-1 list-disc pl-5">
+                {dupes.map((d) => (
+                  <li key={d.id}>
+                    <a href={`/admin/listings/${d.id}`} target="_blank" rel="noreferrer" className="underline">
+                      {d.title}
+                    </a>{" "}
+                    · ₦{d.price.toLocaleString("en-NG")}
+                    {d.agent ? ` · ${d.agent}` : ""}
+                    {d.status === "taken" ? " · marked taken" : ""}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1">
+                If it&apos;s the same room, don&apos;t save. Tap Clear and paste the next post. If it was marked taken,
+                open it and mark it available again instead.
+              </p>
+            </div>
+          )}
           {filled && (
             <div role="status" className="text-sm">
               {filled.got.length > 0 && <p className="text-green-700">Filled: {filled.got.join(", ")}. Check them below.</p>}
