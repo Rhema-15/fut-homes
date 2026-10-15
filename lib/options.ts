@@ -92,3 +92,10 @@ export function formatDistanceShort(km: number | null, campus: Campus): string |
   if (km === null || km === undefined) return null;
   return `${Number(km).toFixed(1)} km to ${campus === "bosso" ? "Bosso" : "GK"}`;
 }
+
+// Short money for tight spots: ₦180k, ₦1.2m.
+export function formatNairaShort(amount: number): string {
+  if (amount >= 1_000_000) return `₦${Number((amount / 1_000_000).toFixed(1))}m`;
+  if (amount >= 1000) return `₦${Math.round(amount / 1000)}k`;
+  return formatNaira(amount);
+}

@@ -249,7 +249,7 @@ export async function moreNearby(
   return { label, area: listing.area, rooms };
 }
 
-export type AreaSummary = { area: string; campus: Campus; count: number; cover: string | null };
+export type AreaSummary = { area: string; campus: Campus; count: number; cover: string | null; minPrice: number };
 
 // Areas that currently have rooms students can see, busiest first, each
 // with a cover photo. Powers the "Where?" dropdown and the Browse row.
@@ -260,8 +260,10 @@ export async function listAreas(): Promise<AreaSummary[]> {
     if (r.status !== "available" || !r.area) continue;
     const key = r.area.trim().toLowerCase();
     const found = byArea.get(key);
-    if (found) found.count += 1;
-    else byArea.set(key, { area: r.area.trim(), campus: r.campus, count: 1, cover: r.photos[0] ?? null });
+    if (found) {
+      found.count += 1;
+      found.minPrice = Math.min(found.minPrice, r.price);
+    } else byArea.set(key, { area: r.area.trim(), campus: r.campus, count: 1, cover: r.photos[0] ?? null, minPrice: r.price });
   }
   return [...byArea.values()].sort((a, b) => b.count - a.count || a.area.localeCompare(b.area));
 }

@@ -7,12 +7,24 @@ export function SiteHeader() {
         <Link href="/" className="flex min-h-11 items-center text-[26px] leading-7 font-extrabold tracking-[-0.04em] text-ink">
           fut homes
         </Link>
-        <Link
-          href="/for-agents"
-          className="flex min-h-10 items-center rounded-full border-2 border-ink bg-white px-3.5 text-sm font-bold text-ink"
-        >
-          For agents
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/rooms"
+            aria-label="Search rooms"
+            className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-ink bg-white text-ink"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </Link>
+          <Link
+            href="/for-agents"
+            className="flex min-h-10 items-center rounded-full border-2 border-ink bg-white px-3.5 text-sm font-bold text-ink"
+          >
+            For agents
+          </Link>
+        </div>
       </div>
     </header>
   );

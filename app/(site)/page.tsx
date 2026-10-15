@@ -3,7 +3,7 @@ import { connection } from "next/server";
 import { ListingGrid } from "@/components/public/listing-card";
 import SearchForm from "@/components/public/search-form";
 import { SafetyWarning } from "@/components/public/site-chrome";
-import { formatNaira, photoUrl } from "@/lib/options";
+import { formatNaira, formatNairaShort, photoUrl } from "@/lib/options";
 import { type AreaSummary, listAreas, newestListings } from "@/lib/public-data";
 
 export const instant = false;
@@ -78,7 +78,7 @@ export default async function HomePage() {
           )}
         </div>
         {rooms.length > 0 ? (
-          <ListingGrid listings={rooms} />
+          <ListingGrid listings={rooms.slice(0, 4)} />
         ) : (
           <p className="sticker rounded-lg bg-white p-4 font-medium text-muted">
             New rooms are being added this week. Check back soon. No wahala.
@@ -86,8 +86,64 @@ export default async function HomePage() {
         )}
       </section>
 
-      <section className="px-[18px] pt-7 pb-8">
+      {areas.length > 0 && (
+        <section className="flex flex-col gap-2.5 px-[18px] pt-7" aria-labelledby="areas-title">
+          <h2 id="areas-title" className="text-[22px] leading-[26px] font-extrabold tracking-[-0.03em]">
+            Rooms by area
+          </h2>
+          <ul className="grid grid-cols-2 gap-2.5 min-[700px]:grid-cols-3">
+            {areas.slice(0, 6).map((a) => (
+              <li key={a.area}>
+                <Link
+                  href={`/rooms?where=${encodeURIComponent(`area:${a.area}`)}`}
+                  className="flex h-full flex-col gap-0.5 rounded-[16px] border-2 border-ink bg-white px-3.5 py-3 text-ink"
+                >
+                  <span className="truncate text-[17px] leading-[22px] font-extrabold">{a.area}</span>
+                  <span className="text-[13px] leading-[17px] font-semibold text-muted">
+                    {a.count} {a.count === 1 ? "room" : "rooms"} · {a.count === 1 ? "" : "from "}
+                    {formatNairaShort(a.minPrice)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="flex flex-col gap-2.5 px-[18px] pt-7" aria-labelledby="how-title">
+        <div className="flex items-baseline justify-between">
+          <h2 id="how-title" className="text-[22px] leading-[26px] font-extrabold tracking-[-0.03em]">
+            How it works
+          </h2>
+          <Link href="/how-it-works" className="text-sm font-bold text-brand-700 underline-offset-4 hover:underline">
+            More
+          </Link>
+        </div>
+        <ol className="grid grid-cols-3 gap-2">
+          {[
+            { bg: "bg-sticker-yellow", text: "Search near your campus" },
+            { bg: "bg-sticker-pink", text: "Watch the room video" },
+            { bg: "bg-sticker-mint", text: "Book on WhatsApp, inspect, then pay" },
+          ].map((step, i) => (
+            <li key={step.text} className={"flex flex-col gap-1.5 rounded-[16px] border-2 border-ink p-3 " + step.bg}>
+              <span className="text-[22px] leading-6 font-extrabold">{i + 1}</span>
+              <span className="text-sm leading-[18px] font-bold">{step.text}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="flex flex-col gap-4 px-[18px] pt-7 pb-8">
         <SafetyWarning />
+        <div className="flex items-center gap-3 rounded-[18px] border-2 border-ink bg-brand-700 p-4 text-white">
+          <span className="flex-1 text-[17px] leading-[21px] font-extrabold">Got rooms near FUT? List them free.</span>
+          <Link
+            href="/for-agents"
+            className="flex-none rounded-[12px] border-2 border-ink bg-white px-3.5 py-2.5 text-sm font-extrabold text-ink"
+          >
+            For agents
+          </Link>
+        </div>
       </section>
     </div>
   );
