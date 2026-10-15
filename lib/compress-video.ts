@@ -1,6 +1,7 @@
 // Re-records a room video smaller in the browser (no extra libraries):
 // plays it silently onto a canvas at max 640px and records that at a
 // lower bitrate. Takes about as long as the video. Sound is dropped.
+// Skipped for files that are already light (most WhatsApp videos).
 // Falls back to the original file if recording isn't supported or
 // doesn't make it smaller.
 
@@ -24,7 +25,22 @@ function original(file: File): VideoResult {
   return { blob: file, contentType: type, extension, compressed: false };
 }
 
-export async function compressVideo(file: File, onProgress?: (fraction: number) => void): Promise<VideoResult> {
+// WhatsApp already squeezes videos hard. Re-recording one takes as long as
+// the video plays and saves little, so light files go up as they are.
+const LIGHT_BYTES = 8 * 1024 * 1024;
+const LIGHT_BITRATE = 1_600_000;
+
+export function isAlreadyLight(file: File, seconds: number | null): boolean {
+  if (file.size <= LIGHT_BYTES) return true;
+  return !!seconds && (file.size * 8) / seconds <= LIGHT_BITRATE;
+}
+
+export async function compressVideo(
+  file: File,
+  onProgress?: (fraction: number) => void,
+  seconds: number | null = null,
+): Promise<VideoResult> {
+  if (isAlreadyLight(file, seconds)) return original(file);
   const canRecord =
     typeof MediaRecorder !== "undefined" &&
     typeof HTMLCanvasElement.prototype.captureStream === "function";

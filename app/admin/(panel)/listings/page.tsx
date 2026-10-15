@@ -21,13 +21,21 @@ type Row = {
   listing_photos: { path: string; position: number }[];
 };
 
-export default async function ListingsPage() {
+export default async function ListingsPage({ searchParams }: PageProps<"/admin/listings">) {
+  const { agent } = await searchParams;
+  const agentId = typeof agent === "string" && agent ? agent : null;
   const supabase = await createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("listings")
     .select("id, title, room_type, campus, area, price, status, video_path, is_published, agents(name), listing_photos(path, position)")
     .order("created_at", { ascending: false });
+  if (agentId) query = query.eq("agent_id", agentId);
+  const [{ data, error }, { data: agentRows }] = await Promise.all([
+    query,
+    supabase.from("agents").select("id, name").order("name"),
+  ]);
   const listings = (data ?? []) as unknown as Row[];
+  const agents = agentRows ?? [];
 
   return (
     <div>
@@ -38,8 +46,38 @@ export default async function ListingsPage() {
         </Link>
       </div>
 
+      {/* Pick an agent to see only their rooms (works without JavaScript). */}
+      <form className="mt-4 flex gap-2">
+        <select
+          name="agent"
+          defaultValue={agentId ?? ""}
+          aria-label="Show rooms from"
+          className="min-w-0 flex-1 rounded-md border border-neutral-300 px-3 py-2 text-base"
+        >
+          <option value="">All agents</option>
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium">
+          Show
+        </button>
+      </form>
+      {agentId && (
+        <p className="mt-2 text-sm text-neutral-600">
+          {listings.length} room{listings.length === 1 ? "" : "s"} from {agents.find((a) => a.id === agentId)?.name ?? "this agent"}.{" "}
+          <Link href="/admin/listings" className="underline">
+            Show all
+          </Link>
+        </p>
+      )}
+
       {error && <p className="mt-6 text-sm text-red-600">Couldn&apos;t load listings: {error.message}</p>}
-      {!error && listings.length === 0 && <p className="mt-6 text-neutral-500">No listings yet.</p>}
+      {!error && listings.length === 0 && (
+        <p className="mt-6 text-neutral-500">{agentId ? "No rooms from this agent yet." : "No listings yet."}</p>
+      )}
 
       <ul className="mt-6 divide-y divide-neutral-200 rounded-lg border border-neutral-200">
         {listings.map((l) => {

@@ -94,57 +94,62 @@ export default function PhotoUpload({
     }
 
     async function handleVideo(file: File) {
-      // 1. Still shots for the photos.
-      if (room > 0) {
-        setBusyStatus("Pulling photos from video…");
-        try {
-          const { stills, seconds } = await videoStills(file, Math.min(6, room));
-          setVideoSeconds(seconds);
-          for (const still of stills) {
-            try {
-              await uploadPhoto(still);
+      // 1. Read the video once: length + still shots for the photos.
+      setBusyStatus("Pulling photos from video…");
+      let seconds: number | null = null;
+      let stills: ImageResult[] = [];
+      try {
+        const result = await videoStills(file, room > 0 ? Math.min(6, room) : 0);
+        seconds = result.seconds;
+        stills = result.stills;
+        setVideoSeconds(seconds);
+      } catch {
+        problems.push("Couldn't read that video on this device. Try the MP4 from WhatsApp.");
+        return;
+      }
+
+      // 2. Photos and the video upload at the same time.
+      setBusyStatus("Uploading photos and video…");
+      const photoJob = Promise.all(
+        stills.map((still) =>
+          uploadPhoto(still).then(
+            () => {
               room -= 1;
-            } catch {
+            },
+            () => {
               failed += 1;
-            }
-          }
-        } catch {
-          problems.push("Couldn't read that video on this device. Try the MP4 from WhatsApp.");
+            },
+          ),
+        ),
+      );
+
+      const videoJob = (async () => {
+        // One video per listing; a new one replaces the old.
+        if (videoDone) return;
+        videoDone = true;
+        const result = await compressVideo(
+          file,
+          (f) => setBusyStatus(`Shrinking video… ${Math.round(f * 100)}% (keep this tab open)`),
+          seconds,
+        );
+        if (result.blob.size > MAX_VIDEO_BYTES) {
+          problems.push("The video is too big (over 25MB). Photos were added; send a shorter video.");
           return;
         }
-      }
-
-      if (room <= 0) {
-        try {
-          const { seconds } = await videoStills(file, 0);
-          setVideoSeconds(seconds);
-        } catch {
-          /* length is optional */
+        setBusyStatus(`Uploading video (${(result.blob.size / 1024 / 1024).toFixed(1)}MB)…`);
+        const path = `listings/${crypto.randomUUID()}.${result.extension}`;
+        const { error: uploadError } = await supabase.storage
+          .from("videos")
+          .upload(path, result.blob, { contentType: result.contentType, cacheControl: "31536000" });
+        if (uploadError) {
+          if (isLoginError(uploadError.message)) loginExpired = true;
+          else problems.push(`The video didn't upload (${uploadError.message}). Photos were still added.`);
+          return;
         }
-      }
+        setVideo(path);
+      })();
 
-      // 2. The video itself (one per listing; a new one replaces the old).
-      if (videoDone) return;
-      videoDone = true;
-      setBusyStatus("Shrinking video… keep this tab open");
-      const result = await compressVideo(file, (f) =>
-        setBusyStatus(`Shrinking video… ${Math.round(f * 100)}% (keep this tab open)`),
-      );
-      if (result.blob.size > MAX_VIDEO_BYTES) {
-        problems.push("The video is too big (over 25MB). Photos were added; send a shorter video.");
-        return;
-      }
-      setBusyStatus("Uploading video…");
-      const path = `listings/${crypto.randomUUID()}.${result.extension}`;
-      const { error: uploadError } = await supabase.storage
-        .from("videos")
-        .upload(path, result.blob, { contentType: result.contentType, cacheControl: "31536000" });
-      if (uploadError) {
-        if (isLoginError(uploadError.message)) loginExpired = true;
-        else problems.push(`The video didn't upload (${uploadError.message}). Photos were still added.`);
-        return;
-      }
-      setVideo(path);
+      await Promise.all([photoJob, videoJob]);
     }
 
     for (const file of files) {
