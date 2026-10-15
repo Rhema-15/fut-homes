@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import PhotoUpload from "@/components/photo-upload";
 import { CAMPUSES, ROOM_TYPES } from "@/lib/options";
+import { AMENITIES } from "@/lib/amenities";
 import type { FormState } from "@/lib/form-utils";
 
 export type ListingDefaults = {
@@ -14,6 +15,9 @@ export type ListingDefaults = {
   distance_km: number | null;
   price: number;
   fees_note: string | null;
+  agent_fee: number | null;
+  caution_fee: number | null;
+  amenities: string[];
   description: string | null;
   video_path: string | null;
   video_seconds: number | null;
@@ -111,10 +115,39 @@ export default function ListingForm({
         <input name="price" defaultValue={listing?.price ?? ""} inputMode="numeric" required placeholder="150,000" className={input} />
       </label>
 
+      <div className="grid grid-cols-2 gap-3">
+        <label className="flex flex-col gap-1 text-sm">
+          Agent fee (₦, optional)
+          <input name="agent_fee" defaultValue={listing?.agent_fee ?? ""} inputMode="numeric" placeholder="20,000" className={input} />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          Caution fee (₦, optional)
+          <input name="caution_fee" defaultValue={listing?.caution_fee ?? ""} inputMode="numeric" placeholder="10,000" className={input} />
+        </label>
+      </div>
+
       <label className="flex flex-col gap-1 text-sm">
-        Other fees (optional)
-        <input name="fees_note" defaultValue={listing?.fees_note ?? ""} placeholder="Agency ₦20,000 · Caution ₦10,000" className={input} />
+        Other fees note (optional)
+        <input name="fees_note" defaultValue={listing?.fees_note ?? ""} placeholder="Legal fee ₦10,000, NEPA bill shared" className={input} />
       </label>
+
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend className="mb-1">What&apos;s included (tick what the agent said)</legend>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          {Object.entries(AMENITIES).map(([value, label]) => (
+            <label key={value} className="flex min-h-9 items-center gap-2">
+              <input
+                type="checkbox"
+                name="amenities"
+                value={value}
+                defaultChecked={listing?.amenities.includes(value)}
+                className="size-4"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="flex flex-col gap-1 text-sm">
         Description (optional)

@@ -14,6 +14,7 @@ type Item = {
   distance_km: number | null;
   price: number;
   fees_note: string | null;
+  amenities?: string[];
   description: string | null;
   video: { file: string; seconds: number } | null;
   photos: string[];
@@ -100,23 +101,23 @@ export default function ImportClient({
       }
 
       set(item.key, "working", "Saving listing…");
-      const { data: listing, error } = await supabase
-        .from("listings")
-        .insert({
-          agent_id: agentId,
-          title: item.title,
-          room_type: item.room_type,
-          campus,
-          area: item.area,
-          distance_km: item.distance_km,
-          price: item.price,
-          fees_note: item.fees_note,
-          description: item.description,
-          video_path: videoPath,
-          video_seconds: item.video?.seconds ?? null,
-        })
-        .select("id")
-        .single();
+      const fields = {
+        agent_id: agentId,
+        title: item.title,
+        room_type: item.room_type,
+        campus,
+        area: item.area,
+        distance_km: item.distance_km,
+        price: item.price,
+        fees_note: item.fees_note,
+        description: item.description,
+        video_path: videoPath,
+        video_seconds: item.video?.seconds ?? null,
+      };
+      const insert = (row: object) => supabase.from("listings").insert(row).select("id").single();
+      let { data: listing, error } = await insert(item.amenities?.length ? { ...fields, amenities: item.amenities } : fields);
+      // Before SQL 007 there's no amenities column: save without the ticks.
+      if (error && (error.code === "PGRST204" || error.code === "42703")) ({ data: listing, error } = await insert(fields));
       if (error || !listing) throw error ?? new Error("Couldn't save the listing");
 
       const { error: photoError } = await supabase

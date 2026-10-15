@@ -4,11 +4,12 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { type FormState, pathList, saveError, text, videoPath } from "@/lib/form-utils";
 import { CAMPUSES, ROOM_TYPES, isOneOf } from "@/lib/options";
+import { cleanAmenities } from "@/lib/amenities";
 
 type Parsed =
   | { error: string }
   | {
-      fields: Record<string, string | number | null>;
+      fields: Record<string, string | number | string[] | null>;
       photos: string[];
     };
 
@@ -23,6 +24,9 @@ function parse(formData: FormData): Parsed {
   const distance = distanceText ? Number(distanceText) : null;
   const videoSecondsDigits = text(formData, "video_seconds").replace(/\D/g, "");
   const feesNote = text(formData, "fees_note");
+  const agentFeeDigits = text(formData, "agent_fee").replace(/\D/g, "");
+  const cautionFeeDigits = text(formData, "caution_fee").replace(/\D/g, "");
+  const amenities = cleanAmenities(formData.getAll("amenities"));
   const description = text(formData, "description");
   const photos = pathList(formData, "photos");
   const video = videoPath(formData, "video");
@@ -48,6 +52,9 @@ function parse(formData: FormData): Parsed {
       price: Number(priceDigits),
       distance_km: distance === null ? null : Math.round(distance * 10) / 10,
       fees_note: feesNote || null,
+      agent_fee: agentFeeDigits ? Number(agentFeeDigits) : null,
+      caution_fee: cautionFeeDigits ? Number(cautionFeeDigits) : null,
+      amenities,
       description: description || null,
       video_path: video,
       video_seconds: video && videoSecondsDigits ? Number(videoSecondsDigits) : null,
@@ -55,12 +62,24 @@ function parse(formData: FormData): Parsed {
   };
 }
 
+// Before SQL 007 is run these columns don't exist yet: save without them.
+const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee"];
+function missingColumn(error: { code?: string; message: string } | null) {
+  return !!error && (error.code === "42703" || error.code === "PGRST204");
+}
+function withoutNewFields(fields: Parsed & { fields: object }) {
+  return Object.fromEntries(Object.entries(fields.fields).filter(([k]) => !NEW_FIELDS.includes(k)));
+}
+
 export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = parse(formData);
   if ("error" in parsed) return parsed;
 
   const supabase = await createClient();
-  const { data: listing, error } = await supabase.from("listings").insert(parsed.fields).select("id").single();
+  let { data: listing, error } = await supabase.from("listings").insert(parsed.fields).select("id").single();
+  if (missingColumn(error)) {
+    ({ data: listing, error } = await supabase.from("listings").insert(withoutNewFields(parsed)).select("id").single());
+  }
   if (error || !listing) return { error: saveError("listing", error?.message ?? "unknown error") };
 
   const { error: photoError } = await supabase
@@ -87,7 +106,8 @@ export async function updateListing(id: string, _prev: FormState, formData: Form
     .eq("id", id)
     .single();
 
-  const { error } = await supabase.from("listings").update(parsed.fields).eq("id", id);
+  let { error } = await supabase.from("listings").update(parsed.fields).eq("id", id);
+  if (missingColumn(error)) ({ error } = await supabase.from("listings").update(withoutNewFields(parsed)).eq("id", id));
   if (error) return { error: saveError("listing", error.message) };
 
   // Replace the photo list with what's on the form now.

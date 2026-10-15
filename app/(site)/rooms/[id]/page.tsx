@@ -8,16 +8,17 @@ import { Icon } from "@/components/public/icons";
 import { AgentAvatar, ListingGrid } from "@/components/public/listing-card";
 import { SafetyWarning } from "@/components/public/site-chrome";
 import {
+  CAMPUSES,
   ROOM_TYPES,
   firstName,
-  formatDistance,
   formatDuration,
   formatNaira,
   listingCode,
   confirmedAgo,
   photoUrl,
 } from "@/lib/options";
-import { getListing, similarListings } from "@/lib/public-data";
+import { type PublicListing, getListing, moreNearby, similarListings } from "@/lib/public-data";
+import { AMENITIES } from "@/lib/amenities";
 import { shareData } from "@/lib/share";
 import { badgeLevel } from "@/lib/agent-checks";
 
@@ -43,15 +44,101 @@ function daysAgo(iso: string): string {
   return `Listed ${days} days ago`;
 }
 
+function KeyFacts({ listing }: { listing: PublicListing }) {
+  const campusShort = listing.campus === "bosso" ? "Bosso" : "GK";
+  const facts = [
+    { icon: "home" as const, value: ROOM_TYPES[listing.room_type], label: "Room type" },
+    { icon: "map-pin" as const, value: listing.area ?? CAMPUSES[listing.campus], label: listing.area ? "Area" : "Near campus" },
+    listing.distance_km !== null
+      ? { icon: "navigation" as const, value: `${listing.distance_km.toFixed(1)} km`, label: `to ${campusShort} campus` }
+      : { icon: "navigation" as const, value: campusShort, label: "Nearest campus" },
+  ];
+  return (
+    <dl className="grid grid-cols-3 overflow-hidden rounded-lg border-2 border-ink bg-white">
+      {facts.map((f, i) => (
+        <div key={f.label} className={"flex min-w-0 flex-col gap-1 p-3 " + (i < 2 ? "border-r-2 border-ink" : "")}>
+          <span className="text-brand-700">
+            <Icon name={f.icon} size={20} />
+          </span>
+          <dd className="text-[15px] leading-5 font-extrabold break-words">{f.value}</dd>
+          <dt className="order-last text-xs leading-4 font-semibold text-muted">{f.label}</dt>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function Fees({ listing }: { listing: PublicListing }) {
+  const rows = [
+    { label: listing.room_type === "shared" ? "Your share of rent (1 year)" : "Rent (1 year)", amount: listing.price },
+    listing.agent_fee !== null ? { label: "Agent fee", amount: listing.agent_fee } : null,
+    listing.caution_fee !== null ? { label: "Caution fee", amount: listing.caution_fee } : null,
+  ].filter((r) => r !== null);
+  const total = rows.reduce((sum, r) => sum + r.amount, 0);
+  if (rows.length < 2 && !listing.fees_note) return null;
+  return (
+    <div className="flex flex-col gap-1.5 rounded-md border-2 border-ink bg-white px-3.5 py-3 text-sm font-semibold">
+      {rows.length > 1 &&
+        rows.map((r) => (
+          <p key={r.label} className="flex justify-between gap-3">
+            <span>{r.label}</span>
+            <span className="font-extrabold">{formatNaira(r.amount)}</span>
+          </p>
+        ))}
+      {rows.length > 1 && (
+        <p className="mt-0.5 flex justify-between gap-3 border-t-2 border-dashed border-ink pt-2 text-[15px] font-extrabold">
+          <span>Total to move in</span>
+          <span>{formatNaira(total)}</span>
+        </p>
+      )}
+      {listing.fees_note && (
+        <p className={"font-medium text-slate " + (rows.length > 1 ? "pt-1" : "")}>
+          <span className="font-bold text-ink">{rows.length > 1 ? "Also: " : "Other fees: "}</span>
+          {listing.fees_note}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MiniCard({ listing }: { listing: PublicListing }) {
+  const cover = listing.photos[0];
+  const short = listing.distance_km !== null ? `${listing.distance_km.toFixed(1)} km` : listing.area;
+  return (
+    <Link
+      href={`/rooms/${listing.id}`}
+      className="sticker flex w-40 flex-none flex-col overflow-hidden rounded-lg bg-white text-ink"
+    >
+      <span className="block h-[100px] border-b-2 border-ink bg-brand-50">
+        {cover && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={photoUrl(cover)} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        )}
+      </span>
+      <span className="flex flex-col gap-0.5 px-2.5 py-2">
+        <span className="text-[15px] leading-5 font-extrabold">{formatNaira(listing.price)}</span>
+        <span className="truncate text-xs leading-4 font-semibold text-muted">
+          {[listing.room_type === "shared" ? "Shared · your share" : ROOM_TYPES[listing.room_type], short]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) {
   const listing = await getListing((await params).id);
   if (!listing) notFound();
 
   const taken = listing.status === "taken";
   const type = ROOM_TYPES[listing.room_type];
-  const distance = formatDistance(listing.distance_km, listing.campus);
   const code = listingCode(listing.id);
   const similar = taken ? await similarListings(listing) : [];
+  const more = taken ? null : await moreNearby(listing);
+  const moreHref = more?.area && !more.label.includes(" near ")
+    ? `/rooms?where=${encodeURIComponent("area:" + more.area)}`
+    : `/rooms?where=${listing.campus}`;
 
   const message =
     `Hi, I found your room on FUT Homes: ${type}${listing.area ? ` in ${listing.area}` : ""}, ` +
@@ -87,7 +174,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         <h1 className="text-[30px] leading-[34px] font-extrabold tracking-[-0.03em] min-[768px]:text-[40px] min-[768px]:leading-[44px]">
           {listing.title}
         </h1>
-        <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <span
             className={
               "-rotate-2 rounded-[12px] border-2 border-ink bg-sticker-yellow px-3 py-1 text-[24px] leading-[30px] font-extrabold " +
@@ -97,25 +184,12 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
             {formatNaira(listing.price)}
             <span className="text-sm font-bold">/year</span>
           </span>
-          <span className="text-sm font-bold text-muted">
-            {type}
-            {listing.room_type === "shared" ? " · price is your share" : ""}
-          </span>
+          {listing.room_type === "shared" && <span className="text-sm font-bold text-muted">Price is your share</span>}
         </p>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm font-medium text-muted">
-          {listing.area && (
-            <span className="inline-flex items-center gap-1">
-              <Icon name="map-pin" size={16} />
-              {listing.area}
-            </span>
-          )}
-          {distance && (
-            <span className="inline-flex items-center gap-1">
-              <Icon name="navigation" size={16} />
-              {distance}
-            </span>
-          )}
-        </div>
+      </section>
+
+      <section className="px-[18px] pt-4 min-[768px]:px-0">
+        <KeyFacts listing={listing} />
       </section>
 
       {taken && (
@@ -131,16 +205,30 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         </section>
       )}
 
-      {(listing.description || listing.fees_note) && (
-        <section className="flex flex-col gap-2 px-[18px] pt-6 min-[768px]:px-0">
+      {listing.amenities.length > 0 && (
+        <section className="flex flex-col gap-2.5 px-[18px] pt-6 min-[768px]:px-0">
+          <h2 className="text-[20px] leading-6 font-extrabold tracking-[-0.02em]">What&apos;s included</h2>
+          <ul className="grid grid-cols-2 gap-2">
+            {listing.amenities.map((a) => (
+              <li
+                key={a}
+                className="flex items-center gap-2 rounded-md border-2 border-ink bg-white px-3 py-2.5 text-sm leading-[18px] font-bold"
+              >
+                <span className="flex size-[22px] flex-none items-center justify-center rounded-full border-2 border-ink bg-sticker-mint">
+                  <Icon name="check" size={12} />
+                </span>
+                {AMENITIES[a]}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {(listing.description || listing.fees_note || listing.agent_fee !== null || listing.caution_fee !== null) && (
+        <section className="flex flex-col gap-2.5 px-[18px] pt-6 min-[768px]:px-0">
           <h2 className="text-[20px] leading-6 font-extrabold tracking-[-0.02em]">About this room</h2>
           {listing.description && <p className="whitespace-pre-line font-medium text-slate">{listing.description}</p>}
-          {listing.fees_note && (
-            <p className="text-sm text-slate">
-              <span className="font-semibold text-ink">Other fees: </span>
-              {listing.fees_note}
-            </p>
-          )}
+          <Fees listing={listing} />
         </section>
       )}
 
@@ -163,7 +251,23 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         <SafetyWarning />
       </section>
 
-      <section className="flex flex-col items-start px-[18px] pt-2 pb-8 min-[768px]:px-0">
+      {more && more.rooms.length > 0 && (
+        <section className="flex flex-col gap-2.5 pt-7">
+          <div className="flex items-baseline justify-between gap-3 px-[18px] min-[768px]:px-0">
+            <h2 className="text-[20px] leading-6 font-extrabold tracking-[-0.02em]">{more.label}</h2>
+            <Link href={moreHref} className="flex-none text-sm font-bold text-brand-700">
+              See all
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto px-[18px] pt-0.5 pb-2 min-[768px]:px-0">
+            {more.rooms.map((r) => (
+              <MiniCard key={r.id} listing={r} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="flex flex-col items-start px-[18px] pt-4 pb-8 min-[768px]:px-0">
         {!taken && (
           <Link
             href={`/report?reason=taken&listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}

@@ -14,10 +14,17 @@ import { knownAreas } from "@/lib/admin-areas";
 export const instant = false;
 export const metadata: Metadata = { title: "Edit listing · FUT Homes admin", robots: { index: false } };
 
+// The SQL 007 fields are read separately: before that SQL is run the
+// query just fails and the form shows them empty.
+async function loadExtras(supabase: Awaited<ReturnType<typeof createClient>>, id: string) {
+  const { data } = await supabase.from("listings").select("amenities, agent_fee, caution_fee").eq("id", id).maybeSingle();
+  return (data ?? {}) as { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null };
+}
+
 export default async function EditListingPage({ params }: PageProps<"/admin/listings/[id]">) {
   const { id } = await params;
   const supabase = await createClient();
-  const [{ data: listing }, { data: agents }] = await Promise.all([
+  const [{ data: listing }, { data: agents }, extras] = await Promise.all([
     supabase
       .from("listings")
       .select(
@@ -26,6 +33,7 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
       .eq("id", id)
       .maybeSingle(),
     supabase.from("agents").select("id, name").order("name"),
+    loadExtras(supabase, id),
   ]);
   if (!listing) notFound();
   const areas = await knownAreas();
@@ -117,6 +125,9 @@ export default async function EditListingPage({ params }: PageProps<"/admin/list
           distance_km: listing.distance_km === null ? null : Number(listing.distance_km),
           price: listing.price,
           fees_note: listing.fees_note,
+          agent_fee: extras.agent_fee ?? null,
+          caution_fee: extras.caution_fee ?? null,
+          amenities: extras.amenities ?? [],
           description: listing.description,
           video_path: listing.video_path,
           video_seconds: listing.video_seconds,

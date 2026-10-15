@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { connection } from "next/server";
 import { CAMPUSES, ROOM_TYPES, type Campus, type RoomType, isOneOf } from "@/lib/options";
+import { cleanAmenities, type Amenity } from "@/lib/amenities";
 
 // Public pages read with the anon key, no cookies. Row Level Security
 // only lets them see published listings of active agents.
@@ -32,6 +33,9 @@ export type PublicListing = {
   distance_km: number | null;
   price: number;
   fees_note: string | null;
+  agent_fee: number | null;
+  caution_fee: number | null;
+  amenities: Amenity[];
   description: string | null;
   status: "available" | "taken";
   video_path: string | null;
@@ -46,17 +50,24 @@ const LISTING_COLS =
   "id, title, room_type, campus, area, distance_km, price, fees_note, description, status, video_path, video_seconds, created_at, ";
 const AGENT_AND_PHOTOS =
   "agents!inner(id, name, whatsapp, photo_path, is_trusted, long_time_poster, still_posting, students_confirmed, created_at), listing_photos(path, position)";
-const SELECT = LISTING_COLS + "confirmed_at, " + AGENT_AND_PHOTOS;
-// Until SQL 006 is run there's no confirmed_at column: fall back to the
-// old query (no freshness, no auto-hide) so the site keeps working.
-const SELECT_OLD = LISTING_COLS + AGENT_AND_PHOTOS;
+// Newest columns first. If a SQL file hasn't been run yet, Postgres says
+// "column missing" (42703) and we retry with the older column set, so the
+// site keeps working (without that feature) until the SQL is run.
+const SELECTS: [select: string, hasConfirmed: boolean][] = [
+  [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, " + AGENT_AND_PHOTOS, true], // SQL 007
+  [LISTING_COLS + "confirmed_at, " + AGENT_AND_PHOTOS, true], // SQL 006
+  [LISTING_COLS + AGENT_AND_PHOTOS, false],
+];
 
 type Result<T> = PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>;
 
 async function withFallback<T>(build: (select: string, hasConfirmed: boolean) => Result<T>) {
-  const first = await build(SELECT, true);
-  if (first.error?.code === "42703") return build(SELECT_OLD, false);
-  return first;
+  let result = await build(...SELECTS[0]);
+  for (const [select, hasConfirmed] of SELECTS.slice(1)) {
+    if (result.error?.code !== "42703") break;
+    result = await build(select, hasConfirmed);
+  }
+  return result;
 }
 
 // Rooms hide from search once they haven't been confirmed for this long.
@@ -77,8 +88,11 @@ function visibleFilter(hasConfirmed: boolean) {
 }
 
 
-type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at"> & {
+type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee"> & {
   confirmed_at?: string | null;
+  amenities?: unknown;
+  agent_fee?: number | null;
+  caution_fee?: number | null;
   agents: Omit<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed"> &
     Partial<Pick<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed">>;
   listing_photos: { path: string; position: number }[];
@@ -89,6 +103,9 @@ function shape(row: Row): PublicListing {
   return {
     ...rest,
     confirmed_at: rest.confirmed_at ?? null,
+    amenities: cleanAmenities(rest.amenities),
+    agent_fee: rest.agent_fee ?? null,
+    caution_fee: rest.caution_fee ?? null,
     distance_km: rest.distance_km === null ? null : Number(rest.distance_km),
     agent: {
       ...agents,
@@ -204,6 +221,32 @@ export async function getListing(id: string): Promise<PublicListing | null> {
 export async function similarListings(listing: PublicListing, limit = 3): Promise<PublicListing[]> {
   const rooms = await searchListings({ campus: listing.campus, area: null, type: null, max: null, sort: "near" }, 12);
   return rooms.filter((r) => r.id !== listing.id && r.status === "available").slice(0, limit);
+}
+
+// "More rooms in Dama": same area first, topped up with rooms near the
+// same campus when the area has only a few.
+export async function moreNearby(
+  listing: PublicListing,
+  limit = 6,
+): Promise<{ label: string; area: string | null; rooms: PublicListing[] }> {
+  const base = { campus: null, area: null, type: null, max: null, sort: "near" as const };
+  const sameArea = listing.area ? await searchListings({ ...base, area: listing.area }, limit + 1) : [];
+  const picked = sameArea.filter((r) => r.id !== listing.id && r.status === "available");
+  if (picked.length < limit) {
+    const near = await searchListings({ ...base, campus: listing.campus }, 20);
+    for (const r of near) {
+      if (picked.length >= limit) break;
+      if (r.id !== listing.id && r.status === "available" && !picked.some((p) => p.id === r.id)) picked.push(r);
+    }
+  }
+  const rooms = picked.slice(0, limit);
+  const inArea = (r: PublicListing) => !!listing.area && r.area?.trim().toLowerCase() === listing.area.trim().toLowerCase();
+  const label = !rooms.some(inArea)
+    ? `More rooms near ${CAMPUSES[listing.campus]}`
+    : rooms.every(inArea)
+      ? `More rooms in ${listing.area}`
+      : `More rooms in and around ${listing.area}`;
+  return { label, area: listing.area, rooms };
 }
 
 export type AreaSummary = { area: string; campus: Campus; count: number; cover: string | null };
