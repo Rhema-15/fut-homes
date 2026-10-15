@@ -8,8 +8,8 @@ export default function SortSelect({ value }: { value: Sort }) {
   const params = useSearchParams();
 
   return (
-    <label className="inline-flex items-center gap-1.5 text-sm text-muted">
-      Sort
+    <label className="inline-flex items-center gap-1.5 text-sm">
+      <span className="sr-only">Sort</span>
       <select
         value={value}
         onChange={(e) => {
@@ -19,7 +19,7 @@ export default function SortSelect({ value }: { value: Sort }) {
           const q = next.toString();
           router.push(q ? `/rooms?${q}` : "/rooms");
         }}
-        className="h-9 rounded-sm border border-control-border bg-white px-2 text-sm font-semibold text-ink"
+        className="h-9 rounded-full border-2 border-ink bg-white px-3 text-[13px] font-bold text-ink"
       >
         {Object.entries(SORTS).map(([v, label]) => (
           <option key={v} value={v}>
