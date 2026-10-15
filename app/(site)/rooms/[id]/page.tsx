@@ -19,7 +19,7 @@ import {
 } from "@/lib/options";
 import { type PublicListing, getListing, moreNearby, similarListings } from "@/lib/public-data";
 import { AMENITIES } from "@/lib/amenities";
-import { shareData } from "@/lib/share";
+import { shareData, shortLink } from "@/lib/share";
 import { badgeLevel } from "@/lib/agent-checks";
 
 export const instant = false;
@@ -142,7 +142,9 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
 
   const message =
     `Hi, I found your room on FUT Homes: ${type}${listing.area ? ` in ${listing.area}` : ""}, ` +
-    `${formatNaira(listing.price)}/year (Listing #${code}). Is it still available? I'd like to book an inspection.`;
+    `${formatNaira(listing.price)}/year (Listing #${code}). Is it still available? I'd like to book an inspection.\n\n` +
+    // The link makes WhatsApp show the room's photo card, so the agent sees which room.
+    `https://${shortLink(listing.id)}`;
   const whatsappHref = `https://wa.me/${listing.agent.whatsapp}?text=${encodeURIComponent(message)}`;
 
   return (
