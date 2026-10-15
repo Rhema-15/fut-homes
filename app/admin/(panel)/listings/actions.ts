@@ -9,11 +9,12 @@ import { cleanAmenities } from "@/lib/amenities";
 type Parsed =
   | { error: string }
   | {
-      fields: Record<string, string | number | string[] | null>;
+      fields: Record<string, string | number | boolean | string[] | null>;
       photos: string[];
     };
 
-function parse(formData: FormData): Parsed {
+function parse(formData: FormData, allowDraft = false): Parsed {
+  const draft = allowDraft && formData.get("draft") === "on";
   const agentId = text(formData, "agent_id");
   const title = text(formData, "title");
   const roomType = text(formData, "room_type");
@@ -35,11 +36,11 @@ function parse(formData: FormData): Parsed {
   if (!title) return { error: "Give the listing a short title." };
   if (!isOneOf(ROOM_TYPES, roomType)) return { error: "Pick a room type." };
   if (!isOneOf(CAMPUSES, campus)) return { error: "Pick the nearest campus." };
-  if (!priceDigits) return { error: "Enter the rent per year." };
+  if (!priceDigits && !draft) return { error: "Enter the rent, or tick \"Save as hidden draft\"." };
   if (distance !== null && (!Number.isFinite(distance) || distance < 0 || distance > 50)) {
     return { error: "Distance should be in km, like 1.2." };
   }
-  if (photos.length === 0) return { error: "Add at least one photo." };
+  if (photos.length === 0 && !draft) return { error: "Add at least one photo, or tick \"Save as hidden draft\"." };
 
   return {
     photos,
@@ -49,7 +50,7 @@ function parse(formData: FormData): Parsed {
       room_type: roomType,
       campus,
       area: area || null,
-      price: Number(priceDigits),
+      price: Number(priceDigits || 0),
       distance_km: distance === null ? null : Math.round(distance * 10) / 10,
       fees_note: feesNote || null,
       agent_fee: agentFeeDigits ? Number(agentFeeDigits) : null,
@@ -58,6 +59,7 @@ function parse(formData: FormData): Parsed {
       description: description || null,
       video_path: video,
       video_seconds: video && videoSecondsDigits ? Number(videoSecondsDigits) : null,
+      ...(draft ? { is_published: false } : {}),
     },
   };
 }
@@ -72,7 +74,7 @@ function withoutNewFields(fields: Parsed & { fields: object }) {
 }
 
 export async function createListing(_prev: FormState, formData: FormData): Promise<FormState> {
-  const parsed = parse(formData);
+  const parsed = parse(formData, true);
   if ("error" in parsed) return parsed;
 
   const supabase = await createClient();
@@ -82,9 +84,11 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   }
   if (error || !listing) return { error: saveError("listing", error?.message ?? "unknown error") };
 
-  const { error: photoError } = await supabase
-    .from("listing_photos")
-    .insert(parsed.photos.map((path, position) => ({ listing_id: listing.id, path, position })));
+  const { error: photoError } = parsed.photos.length
+    ? await supabase
+        .from("listing_photos")
+        .insert(parsed.photos.map((path, position) => ({ listing_id: listing.id, path, position })))
+    : { error: null };
 
   if (photoError) {
     // Don't leave a listing without photos behind.
@@ -92,6 +96,8 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
     return { error: saveError("photos", photoError.message) };
   }
 
+  // "Save & add another" opens a fresh form (the timestamp resets it).
+  if (formData.get("after") === "new") redirect(`/admin/listings/new?added=${Date.now()}`);
   redirect("/admin/listings");
 }
 
