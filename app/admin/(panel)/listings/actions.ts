@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { type FormState, pathList, saveError, text, videoPath } from "@/lib/form-utils";
-import { CAMPUSES, ROOM_TYPES, isOneOf } from "@/lib/options";
+import { CAMPUSES, ROOM_TYPES, isOneOf, normalizeWhatsapp } from "@/lib/options";
+import { badgeLevel } from "@/lib/agent-checks";
 import { cleanAmenities } from "@/lib/amenities";
 
 type Parsed =
@@ -78,6 +79,39 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   if ("error" in parsed) return parsed;
 
   const supabase = await createClient();
+
+  // "+ New agent" picked: add them first (or reuse one with the same number).
+  if (parsed.fields.agent_id === "__new") {
+    const name = text(formData, "new_agent_name");
+    const whatsapp = normalizeWhatsapp(text(formData, "new_agent_whatsapp"));
+    if (!name) return { error: "Enter the new agent's name." };
+    if (!whatsapp) return { error: "Enter the new agent's WhatsApp number, like 0803 123 4567." };
+    const { data: same } = await supabase.from("agents").select("id").eq("whatsapp", whatsapp).limit(1);
+    if (same && same.length) {
+      parsed.fields.agent_id = same[0].id;
+    } else {
+      const checks = {
+        long_time_poster: formData.get("new_agent_long_time_poster") === "on",
+        still_posting: formData.get("new_agent_still_posting") === "on",
+        students_confirmed: formData.get("new_agent_students_confirmed") === "on",
+      };
+      const level = badgeLevel(checks);
+      const { data: agent, error: agentError } = await supabase
+        .from("agents")
+        .insert({
+          name,
+          whatsapp,
+          ...checks,
+          is_trusted: level === "trusted",
+          verification_level: level === "trusted" ? "trusted" : "id_verified",
+        })
+        .select("id")
+        .single();
+      if (agentError || !agent) return { error: saveError("agent", agentError?.message ?? "unknown error") };
+      parsed.fields.agent_id = agent.id;
+    }
+  }
+
   let { data: listing, error } = await supabase.from("listings").insert(parsed.fields).select("id").single();
   if (missingColumn(error)) {
     ({ data: listing, error } = await supabase.from("listings").insert(withoutNewFields(parsed)).select("id").single());
@@ -97,7 +131,9 @@ export async function createListing(_prev: FormState, formData: FormData): Promi
   }
 
   // "Save & add another" opens a fresh form (the timestamp resets it).
-  if (formData.get("after") === "new") redirect(`/admin/listings/new?added=${Date.now()}`);
+  if (formData.get("after") === "new") {
+    redirect(`/admin/listings/new?added=${Date.now()}&agent=${parsed.fields.agent_id}`);
+  }
   redirect("/admin/listings");
 }
 

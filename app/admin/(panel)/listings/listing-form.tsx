@@ -23,6 +23,7 @@ async function cachedHash(path: string, cache: Record<string, string>): Promise<
 type VideoMatch = { id: string; title: string; agent: string; shots: number; of: number };
 
 const LAST_KEY = "futhomes:last-listing";
+export const NEW_AGENT = "__new";
 
 export type ExistingListing = {
   id: string;
@@ -70,10 +71,12 @@ export default function ListingForm({
   areas = [],
   quickAdd = false,
   existing = [],
+  lastAgent,
 }: {
+  lastAgent?: string;
   existing?: ExistingListing[];
   quickAdd?: boolean;
-  agents: { id: string; name: string }[];
+  agents: { id: string; name: string; whatsapp?: string }[];
   areas?: string[];
   action: (prev: FormState, formData: FormData) => Promise<FormState>;
   listing?: ListingDefaults;
@@ -86,6 +89,7 @@ export default function ListingForm({
   const [filled, setFilled] = useState<{ got: string[]; check: string[] } | null>(null);
   const [draft, setDraft] = useState(false);
   const [dupes, setDupes] = useState<ExistingListing[]>([]);
+  const [newAgent, setNewAgent] = useState(quickAdd && agents.length === 0);
   const [videoCheck, setVideoCheck] = useState<"checking" | VideoMatch[] | null>(null);
 
   async function checkVideo(stills: Blob[]) {
@@ -133,16 +137,19 @@ export default function ListingForm({
       if (!f) return;
       const agent = f.elements.namedItem("agent_id") as HTMLSelectElement | null;
       const campus = f.elements.namedItem("campus") as HTMLSelectElement | null;
-      if (agent && last.agent_id && agents.some((a) => a.id === last.agent_id)) agent.value = last.agent_id;
+      const pick = lastAgent ?? last.agent_id;
+      if (agent && pick && agents.some((a) => a.id === pick)) agent.value = pick;
       if (campus && last.campus) campus.value = last.campus;
     } catch {
       /* no saved choice */
     }
-  }, [quickAdd, agents]);
+  }, [quickAdd, agents, lastAgent]);
 
   function remember() {
     if (!quickAdd || !form.current) return;
     const f = form.current;
+    // A brand-new agent has no id yet; the next form gets it from the link.
+    if ((f.elements.namedItem("agent_id") as HTMLSelectElement).value === NEW_AGENT) return;
     try {
       localStorage.setItem(
         LAST_KEY,
@@ -169,7 +176,17 @@ export default function ListingForm({
     set("title", p.title);
     if (p.agentId) {
       set("agent_id", p.agentId);
+      setNewAgent(false);
       got.push("agent");
+    } else if (p.phone) {
+      // Number in the post that isn't one of your agents: start a new one.
+      set("agent_id", NEW_AGENT);
+      setNewAgent(true);
+      requestAnimationFrame(() => {
+        const wa = form.current?.elements.namedItem("new_agent_whatsapp") as HTMLInputElement | null;
+        if (wa) wa.value = "0" + p.phone!.slice(3);
+      });
+      check.push("The number in the post isn't one of your agents, so New agent is open. Add their name.");
     }
     if (p.roomType) {
       set("room_type", p.roomType);
@@ -292,10 +309,17 @@ export default function ListingForm({
 
       <label className="flex flex-col gap-1 text-sm">
         Agent
-        <select name="agent_id" required defaultValue={listing?.agent_id ?? ""} className={input}>
+        <select
+          name="agent_id"
+          required
+          defaultValue={listing?.agent_id ?? (newAgent ? NEW_AGENT : "")}
+          onChange={(e) => setNewAgent(e.target.value === NEW_AGENT)}
+          className={input}
+        >
           <option value="" disabled>
             Choose agent
           </option>
+          {quickAdd && <option value={NEW_AGENT}>+ New agent</option>}
           {agents.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -303,6 +327,34 @@ export default function ListingForm({
           ))}
         </select>
       </label>
+
+      {newAgent && (
+        <fieldset className="flex flex-col gap-3 rounded-md border border-neutral-300 p-3 text-sm">
+          <legend className="px-1 font-medium">New agent</legend>
+          <label className="flex flex-col gap-1">
+            Name
+            <input name="new_agent_name" required autoComplete="off" placeholder="Gracious Houses" className={input} />
+          </label>
+          <label className="flex flex-col gap-1">
+            WhatsApp number
+            <input name="new_agent_whatsapp" required inputMode="tel" placeholder="0803 123 4567" className={input} />
+          </label>
+          <p className="text-neutral-600">Tick only what you&apos;ve checked. Nothing ticked: no badge.</p>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" name="new_agent_long_time_poster" className="mt-0.5 size-4" />
+            Has been posting rooms around FUT for a long time
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" name="new_agent_still_posting" className="mt-0.5 size-4" />
+            Still actively posting rooms
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="checkbox" name="new_agent_students_confirmed" className="mt-0.5 size-4" />
+            Past students confirmed they rented through them
+          </label>
+          <p className="text-neutral-600">Add their photo later from the Agents page.</p>
+        </fieldset>
+      )}
 
       <label className="flex flex-col gap-1 text-sm">
         Title

@@ -9,8 +9,9 @@ export const instant = false;
 export const metadata: Metadata = { title: "Add listing · FUT Homes admin", robots: { index: false } };
 
 export default async function NewListingPage({ searchParams }: PageProps<"/admin/listings/new">) {
-  const { added } = await searchParams;
+  const { added, agent } = await searchParams;
   const addedKey = typeof added === "string" ? added : "first";
+  const lastAgent = typeof agent === "string" ? agent : undefined;
   const supabase = await createClient();
   const areas = await knownAreas();
   // Everything already listed, so the form can warn about reposted rooms.
@@ -32,7 +33,7 @@ export default async function NewListingPage({ searchParams }: PageProps<"/admin
   }));
   const { data: agents } = await supabase
     .from("agents")
-    .select("id, name")
+    .select("id, name, whatsapp")
     .eq("is_active", true)
     .order("name");
 
@@ -47,8 +48,8 @@ export default async function NewListingPage({ searchParams }: PageProps<"/admin
           </Link>
         </p>
       )}
-      {agents && agents.length > 0 ? (
-        <ListingForm key={addedKey} agents={agents} areas={areas} action={createListing} quickAdd existing={existing} />
+      {agents ? (
+        <ListingForm key={addedKey} agents={agents} areas={areas} action={createListing} quickAdd existing={existing} lastAgent={lastAgent} />
       ) : (
         <p className="mt-4 text-neutral-600">
           Add an agent first, then come back.{" "}

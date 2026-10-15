@@ -17,6 +17,7 @@ export type ParsedPost = {
   amenities: Amenity[];
   description?: string;
   agentId?: string;
+  phone?: string; // WhatsApp number found in the post, as 2348031234567
   noPrice: boolean; // "DM for price"
 };
 
@@ -98,7 +99,7 @@ function findArea(text: string, knownAreas: string[]): string | undefined {
 
 export function parsePost(
   text: string,
-  opts: { knownAreas?: string[]; agents?: { id: string; name: string }[] } = {},
+  opts: { knownAreas?: string[]; agents?: { id: string; name: string; whatsapp?: string }[] } = {},
 ): ParsedPost {
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
   const lower = text.toLowerCase();
@@ -119,8 +120,9 @@ export function parsePost(
   // Money: fee lines feed the fee fields, everything else is rent.
   const rents: number[] = [];
   const notes: string[] = [];
+  const PHONE = /(?:\+?234|0)\s*[789][01]\d[\s-]?\d{3}[\s-]?\d{4}/g;
   for (const line of lines) {
-    const amounts = moneyIn(line);
+    const amounts = moneyIn(line.replace(PHONE, " "));
     const l = line.toLowerCase();
     if (/inspection/.test(l)) {
       if (amounts[0]) notes.push(`Inspection fee ₦${amounts[0].toLocaleString("en-NG")}`);
@@ -171,8 +173,18 @@ export function parsePost(
   result.amenities = [...amenities];
   if (extras.length) result.description = [...new Set(extras)].join(". ") + ".";
 
+  // A phone number in the post: matches an agent we have, or is a new one.
+  const phoneMatch = text.match(/(?:\+?234|0)\s*[789][01]\d[\s-]?\d{3}[\s-]?\d{4}/);
+  if (phoneMatch) {
+    let digits = phoneMatch[0].replace(/\D/g, "");
+    if (digits.startsWith("0")) digits = "234" + digits.slice(1);
+    result.phone = digits;
+    const byPhone = (opts.agents ?? []).find((a) => a.whatsapp === digits);
+    if (byPhone) result.agentId = byPhone.id;
+  }
+
   // Agent: a name (or first word of it) mentioned in the post.
-  for (const a of opts.agents ?? []) {
+  for (const a of result.agentId ? [] : (opts.agents ?? [])) {
     const first = a.name.trim().split(/\s+/)[0]?.toLowerCase();
     if (lower.includes(a.name.toLowerCase()) || (first && first.length > 3 && new RegExp(`\\b${first}\\b`).test(lower))) {
       result.agentId = a.id;
