@@ -23,6 +23,8 @@ type Props = {
   // shrunk and attached as the listing's video (form field "video").
   allowVideo?: boolean;
   onBusyChange?: (busy: boolean) => void;
+  // Gets the video's still shots before they upload (repost check).
+  onStills?: (stills: Blob[]) => void;
   // When editing: what's already saved.
   initialPaths?: string[];
   initialVideo?: string | null;
@@ -39,6 +41,7 @@ export default function PhotoUpload({
   hint,
   allowVideo = false,
   onBusyChange,
+  onStills,
   initialPaths = [],
   initialVideo = null,
   initialVideoSeconds = null,
@@ -103,6 +106,7 @@ export default function PhotoUpload({
         seconds = result.seconds;
         stills = result.stills;
         setVideoSeconds(seconds);
+        if (stills.length) onStills?.(stills.map((s) => s.blob));
       } catch {
         problems.push("Couldn't read that video on this device. Try the MP4 from WhatsApp.");
         return;

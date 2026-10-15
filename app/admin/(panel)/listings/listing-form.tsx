@@ -6,6 +6,21 @@ import { CAMPUSES, ROOM_TYPES } from "@/lib/options";
 import { AMENITIES } from "@/lib/amenities";
 import type { FormState } from "@/lib/form-utils";
 import { parsePost } from "@/lib/parse-post";
+import { matchingShots, photoHash } from "@/lib/image-hash";
+import { photoUrl } from "@/lib/options";
+
+const HASH_KEY = "futhomes:photo-hashes";
+
+// Hashes of already-listed photos are kept on this device, so each old
+// photo is downloaded once, not every time a video is picked.
+async function cachedHash(path: string, cache: Record<string, string>): Promise<bigint | null> {
+  if (cache[path]) return BigInt(cache[path]);
+  const h = await photoHash(photoUrl(path));
+  if (h !== null) cache[path] = h.toString();
+  return h;
+}
+
+type VideoMatch = { id: string; title: string; agent: string; shots: number; of: number };
 
 const LAST_KEY = "futhomes:last-listing";
 
@@ -17,6 +32,7 @@ export type ExistingListing = {
   room_type: string;
   status: string;
   agent: string;
+  photos: string[];
 };
 
 const sameArea = (a: string | null, b: string | undefined) => {
@@ -70,6 +86,43 @@ export default function ListingForm({
   const [filled, setFilled] = useState<{ got: string[]; check: string[] } | null>(null);
   const [draft, setDraft] = useState(false);
   const [dupes, setDupes] = useState<ExistingListing[]>([]);
+  const [videoCheck, setVideoCheck] = useState<"checking" | VideoMatch[] | null>(null);
+
+  async function checkVideo(stills: Blob[]) {
+    if (!quickAdd || existing.length === 0) return;
+    setVideoCheck("checking");
+    let cache: Record<string, string> = {};
+    try {
+      cache = JSON.parse(localStorage.getItem(HASH_KEY) ?? "{}");
+    } catch {
+      /* start fresh */
+    }
+    const fresh: bigint[] = [];
+    for (const blob of stills) {
+      const url = URL.createObjectURL(blob);
+      const h = await photoHash(url);
+      URL.revokeObjectURL(url);
+      if (h !== null) fresh.push(h);
+    }
+    const flagged = new Set(dupes.map((d) => d.id));
+    const matches: VideoMatch[] = [];
+    // Flagged rooms: every photo. Others: first 3 (keeps data use low).
+    const ordered = [...existing].sort((a, b) => Number(flagged.has(b.id)) - Number(flagged.has(a.id)));
+    for (const e of ordered) {
+      const paths = flagged.has(e.id) ? e.photos : e.photos.slice(0, 3);
+      const old = (await Promise.all(paths.map((p) => cachedHash(p, cache)))).filter((h): h is bigint => h !== null);
+      const shots = matchingShots(fresh, old);
+      if (fresh.length && shots >= Math.min(2, fresh.length)) {
+        matches.push({ id: e.id, title: e.title, agent: e.agent, shots, of: fresh.length });
+      }
+    }
+    try {
+      localStorage.setItem(HASH_KEY, JSON.stringify(cache));
+    } catch {
+      /* storage full or blocked */
+    }
+    setVideoCheck(matches.sort((a, b) => b.shots - a.shots));
+  }
 
   // New listings start with the agent and campus used last time.
   useEffect(() => {
@@ -367,10 +420,39 @@ export default function ListingForm({
         hint="Add the photo of the building first: it becomes the cover. Then the agent's video: it gives 6 still shots (remove blurry ones) and is attached for students to watch. Use Make cover to change the cover."
         allowVideo
         onBusyChange={setUploading}
+        onStills={quickAdd ? checkVideo : undefined}
         initialPaths={listing?.photos}
         initialVideo={listing?.video_path}
         initialVideoSeconds={listing?.video_seconds}
       />
+
+      {videoCheck === "checking" && (
+        <p role="status" className="text-sm text-neutral-600">
+          Comparing this video with rooms you&apos;ve listed…
+        </p>
+      )}
+      {Array.isArray(videoCheck) && videoCheck.length > 0 && (
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+          <p className="font-semibold">Same video as a room you already listed:</p>
+          <ul className="mt-1 list-disc pl-5">
+            {videoCheck.map((m) => (
+              <li key={m.id}>
+                <a href={`/admin/listings/${m.id}`} target="_blank" rel="noreferrer" className="underline">
+                  {m.title}
+                </a>
+                {m.agent ? ` · ${m.agent}` : ""} · {m.shots} of {m.of} shots match
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">Don&apos;t save. Open it to check, then tap Clear and paste the next post.</p>
+        </div>
+      )}
+      {Array.isArray(videoCheck) && videoCheck.length === 0 && (
+        <p role="status" className="text-sm text-green-700">
+          ✓ Video doesn&apos;t match any room you&apos;ve listed.
+          {dupes.length > 0 ? " The price match above is a different room, so it's fine to save." : ""}
+        </p>
+      )}
 
       {quickAdd && (
         <label className="flex items-start gap-2 text-sm">

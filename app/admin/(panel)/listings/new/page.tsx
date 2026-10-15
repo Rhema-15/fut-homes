@@ -16,7 +16,7 @@ export default async function NewListingPage({ searchParams }: PageProps<"/admin
   // Everything already listed, so the form can warn about reposted rooms.
   const { data: existingRows } = await supabase
     .from("listings")
-    .select("id, title, price, area, room_type, status, agents(name)")
+    .select("id, title, price, area, room_type, status, agents(name), listing_photos(path, position)")
     .order("created_at", { ascending: false });
   const existing = (existingRows ?? []).map((r) => ({
     id: r.id as string,
@@ -26,6 +26,9 @@ export default async function NewListingPage({ searchParams }: PageProps<"/admin
     room_type: r.room_type as string,
     status: r.status as string,
     agent: ((r.agents as unknown as { name: string } | null)?.name) ?? "",
+    photos: [...((r.listing_photos as { path: string; position: number }[] | null) ?? [])]
+      .sort((a, b) => a.position - b.position)
+      .map((p) => p.path),
   }));
   const { data: agents } = await supabase
     .from("agents")
