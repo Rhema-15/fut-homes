@@ -21,6 +21,7 @@ import { type PublicListing, getListing, moreNearby, similarListings } from "@/l
 import { AMENITIES } from "@/lib/amenities";
 import { shareData, shortLink } from "@/lib/share";
 import { badgeLevel } from "@/lib/agent-checks";
+import { FUT_HOMES_WHATSAPP, whatsappLink } from "@/lib/contact";
 
 export const instant = false;
 
@@ -140,12 +141,11 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
     ? `/rooms?where=${encodeURIComponent("area:" + more.area)}`
     : `/rooms?where=${listing.campus}`;
 
-  const message =
-    `Hi, I found your room on FUT Homes: ${type}${listing.area ? ` in ${listing.area}` : ""}, ` +
-    `${formatNaira(listing.price)}/year (Listing #${code}). Is it still available? I'd like to book an inspection.\n\n` +
-    // The link makes WhatsApp show the room's photo card, so the agent sees which room.
+    const message =
+    `Hi FUT Homes, I want to book an inspection: ${type}${listing.area ? ` in ${listing.area}` : ""}, ` +
+    `${formatNaira(listing.price)}/year (Listing #${code}, agent ${firstName(listing.agent.name)}).\n\n` +
     `https://${shortLink(listing.id)}`;
-  const whatsappHref = `https://wa.me/${listing.agent.whatsapp}?text=${encodeURIComponent(message)}`;
+  const whatsappHref = whatsappLink(FUT_HOMES_WHATSAPP, message);
 
   return (
     <div className="mx-auto w-full max-w-3xl min-[768px]:px-4 min-[768px]:pt-6">
@@ -240,7 +240,8 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
             <AgentAvatar name={listing.agent.name} photo={listing.agent.photo_path} size={48} />
             <div className="flex flex-col items-start gap-1">
               <span className="text-lg leading-6 font-extrabold">{firstName(listing.agent.name)}</span>
-              <AgentBadge agentName={listing.agent.name} checks={listing.agent} listingCode={code} />
+              <AgentBadge agentName={listing.agent.name} checks={{ long_time_poster: listing.agent.long_time_poster, still_posting: listing.agent.still_posting, students_confirmed: listing.agent.students_confirmed }} listingCode={code} />
+
             </div>
           </div>
           <p className="text-sm font-medium text-muted">
