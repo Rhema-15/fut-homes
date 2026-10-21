@@ -1,3 +1,4 @@
+import { genderNote } from "@/lib/options";
 import Link from "next/link";
 import type { PublicListing } from "@/lib/public-data";
 import { badgeLevel } from "@/lib/agent-checks";
@@ -86,7 +87,7 @@ export default function ListingCard({ listing, index = 0 }: { listing: PublicLis
           }
         >
           {formatNaira(listing.price)}
-          <span className="text-xs font-bold">/yr{shared ? " · your share" : ""}</span>
+          <span className="text-xs font-bold">/yr{shared ? " · your share" : ""}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}</span>
         </span>
       </span>
     </Link>
@@ -166,7 +167,7 @@ export function LargeListingCard({ listing, index = 0 }: { listing: PublicListin
           }
         >
           {formatNaira(listing.price)}
-          <span className="text-xs font-bold">/yr{shared ? " · your share" : ""}</span>
+          <span className="text-xs font-bold">/yr{shared ? " · your share" : ""}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}</span>
         </span>
       </span>
       <span className="flex flex-col gap-1 px-3.5 pt-3.5 pb-3.5">
