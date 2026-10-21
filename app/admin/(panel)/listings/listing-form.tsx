@@ -53,6 +53,7 @@ export type ListingDefaults = {
   fees_note: string | null;
   agent_fee: number | null;
   caution_fee: number | null;
+  roommate_gender?: string | null;
   amenities: string[];
   description: string | null;
   video_path: string | null;
@@ -373,6 +374,15 @@ export default function ListingForm({
                 {label}
               </option>
             ))}
+          </select>
+        </label>
+                <label className="flex flex-col gap-1 text-sm">
+          Roommate gender (shared rooms)
+          <select name="roommate_gender" defaultValue={listing?.roommate_gender ?? ""} className={input}>
+            <option value="">Not shared / not set</option>
+            <option value="female">Females only</option>
+            <option value="male">Males only</option>
+            <option value="any">Any gender</option>
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
