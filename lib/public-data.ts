@@ -35,6 +35,7 @@ export type PublicListing = {
   fees_note: string | null;
   agent_fee: number | null;
   caution_fee: number | null;
+  roommate_gender: string | null;
   amenities: Amenity[];
   description: string | null;
   status: "available" | "taken";
@@ -54,6 +55,7 @@ const AGENT_AND_PHOTOS =
 // "column missing" (42703) and we retry with the older column set, so the
 // site keeps working (without that feature) until the SQL is run.
 const SELECTS: [select: string, hasConfirmed: boolean][] = [
+  [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, roommate_gender, " + AGENT_AND_PHOTOS, true], // SQL 009
   [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, " + AGENT_AND_PHOTOS, true], // SQL 007
   [LISTING_COLS + "confirmed_at, " + AGENT_AND_PHOTOS, true], // SQL 006
   [LISTING_COLS + AGENT_AND_PHOTOS, false],
@@ -88,11 +90,12 @@ function visibleFilter(hasConfirmed: boolean) {
 }
 
 
-type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee"> & {
+type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee" | "roommate_gender"> & {
   confirmed_at?: string | null;
   amenities?: unknown;
   agent_fee?: number | null;
   caution_fee?: number | null;
+  roommate_gender?: string | null;
   agents: Omit<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed"> &
     Partial<Pick<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed">>;
   listing_photos: { path: string; position: number }[];
@@ -106,6 +109,7 @@ function shape(row: Row): PublicListing {
     amenities: cleanAmenities(rest.amenities),
     agent_fee: rest.agent_fee ?? null,
     caution_fee: rest.caution_fee ?? null,
+    roommate_gender: rest.roommate_gender ?? null,
     distance_km: rest.distance_km === null ? null : Number(rest.distance_km),
     agent: {
       ...agents,
