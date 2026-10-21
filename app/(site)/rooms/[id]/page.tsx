@@ -11,6 +11,7 @@ import {
   CAMPUSES,
   ROOM_TYPES,
   firstName,
+  genderNote,
   formatDuration,
   formatNaira,
   listingCode,
@@ -119,7 +120,7 @@ function MiniCard({ listing }: { listing: PublicListing }) {
       <span className="flex flex-col gap-0.5 px-2.5 py-2">
         <span className="text-[15px] leading-5 font-extrabold">{formatNaira(listing.price)}</span>
         <span className="truncate text-xs leading-4 font-semibold text-muted">
-          {[listing.room_type === "shared" ? "Shared · your share" : ROOM_TYPES[listing.room_type], short]
+          {[listing.room_type === "shared" ? {`Shared · your share${genderNote(listing.room_type, listing.roommate_gender)}`} : ROOM_TYPES[listing.room_type], short]
             .filter(Boolean)
             .join(" · ")}
         </span>
@@ -142,7 +143,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
     : `/rooms?where=${listing.campus}`;
 
     const message =
-    `Hi FUT Homes, I want to book an inspection: ${type}${listing.area ? ` in ${listing.area}` : ""}, ` +
+    `Hi FUT Homes, I want to book an inspection: ${type}${genderNote(listing.room_type, listing.roommate_gender)}${listing.area ? ` in ${listing.area}` : ""}, ` +
     `${formatNaira(listing.price)}/year (Listing #${code}, agent ${firstName(listing.agent.name)}).\n\n` +
     `https://${shortLink(listing.id)}`;
   const whatsappHref = whatsappLink(FUT_HOMES_WHATSAPP, message);
