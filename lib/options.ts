@@ -99,3 +99,10 @@ export function formatNairaShort(amount: number): string {
   if (amount >= 1000) return `₦${Math.round(amount / 1000)}k`;
   return formatNaira(amount);
 }
+
+export const ROOMMATE_GENDERS = { female: "Females only", male: "Males only", any: "Any gender" } as const;
+
+export function genderNote(roomType: string, gender: string | null): string {
+  if (roomType !== "shared" || !gender || !(gender in ROOMMATE_GENDERS)) return "";
+  return ` · ${ROOMMATE_GENDERS[gender as keyof typeof ROOMMATE_GENDERS].toLowerCase()}`;
+}
