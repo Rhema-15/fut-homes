@@ -120,7 +120,7 @@ function MiniCard({ listing }: { listing: PublicListing }) {
       <span className="flex flex-col gap-0.5 px-2.5 py-2">
         <span className="text-[15px] leading-5 font-extrabold">{formatNaira(listing.price)}</span>
         <span className="truncate text-xs leading-4 font-semibold text-muted">
-          {[listing.room_type === "shared" ? {`Shared · your share${genderNote(listing.room_type, listing.roommate_gender)}`} : ROOM_TYPES[listing.room_type], short]
+                   {[listing.room_type === "shared" ? `Shared · your share${genderNote(listing.room_type, listing.roommate_gender)}` : ROOM_TYPES[listing.room_type], short]
             .filter(Boolean)
             .join(" · ")}
         </span>
