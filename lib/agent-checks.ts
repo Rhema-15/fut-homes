@@ -16,13 +16,13 @@ export function badgeLevel(c: AgentChecks): BadgeLevel {
   return null;
 }
 
-export const BADGE_LABEL = { trusted: "Trusted agent", verified: "Verified" } as const;
+export const BADGE_LABEL = { trusted: "Verified home", verified: "Verified home" } as const;
 
-export function checkLines(c: AgentChecks, firstName: string): string[] {
+export function checkLines(c: AgentChecks): string[] {
   return [
     c.long_time_poster ? "Has been posting rooms around FUT for a long time" : null,
     c.still_posting ? "Still actively posting rooms" : null,
-    c.students_confirmed ? `Past students confirmed they rented through ${firstName}` : null,
+    c.students_confirmed ? "Past students confirmed they rented through the agent on this listing" : null,
   ].filter((l): l is string => l !== null);
 }
 
