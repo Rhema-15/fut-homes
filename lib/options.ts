@@ -106,3 +106,20 @@ export function genderNote(roomType: string, gender: string | null): string {
   if (roomType !== "shared" || !gender || !(gender in ROOMMATE_GENDERS)) return "";
   return ` · ${ROOMMATE_GENDERS[gender as keyof typeof ROOMMATE_GENDERS].toLowerCase()}`;
 }
+
+// Rent period. Most rooms are a full year; some are only a few months.
+export function rentMonths(m: number | null | undefined): number {
+  return m && m >= 1 && m < 12 ? m : 12;
+}
+export function isPartial(m: number | null | undefined): boolean {
+  return rentMonths(m) < 12;
+}
+export function rentUnit(m: number | null | undefined, long = false): string {
+  const n = rentMonths(m);
+  if (n === 12) return long ? "/year" : "/yr";
+  return `/${n} month${n === 1 ? "" : "s"}`;
+}
+export function rentPeriodText(m: number | null | undefined): string {
+  const n = rentMonths(m);
+  return n === 12 ? "1 year" : `${n} month${n === 1 ? "" : "s"}`;
+}
