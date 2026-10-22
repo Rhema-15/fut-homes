@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Edit listing · FUT Homes admin", ro
 
 // The SQL 007 fields are read separately: before that SQL is run the
 // query just fails and the form shows them empty.
-type Extras = { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null; admin_note?: string | null roommate_gender?: string | null;};
+type Extras = { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null; admin_note?: string | null; roommate_gender?: string | null };
 async function loadExtras(supabase: Awaited<ReturnType<typeof createClient>>, id: string): Promise<Extras> {
   for (const cols of ["amenities, agent_fee, caution_fee, roommate_gender, admin_note","amenities, agent_fee, caution_fee, admin_note", "amenities, agent_fee, caution_fee", "admin_note"]) {
     const { data, error } = await supabase.from("listings").select(cols).eq("id", id).maybeSingle();
