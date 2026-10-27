@@ -5,7 +5,6 @@ import { type AgentChecks, BADGE_LABEL, badgeLevel, checkLines } from "@/lib/age
 import { Icon } from "./icons";
 
 type Props = {
-  agentName: string;
   checks: AgentChecks;
   listingCode?: string;
 };
@@ -13,15 +12,14 @@ type Props = {
 // The badge is a button: tapping it shows exactly what was checked.
 // It never claims more than Rhema ticked in admin, and with nothing
 // ticked there's no badge at all.
-export default function AgentBadge({ agentName, checks, listingCode }: Props) {
+export default function AgentBadge({ checks, listingCode }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const level = badgeLevel(checks);
   if (!level) return null;
 
-  const name = agentName.trim().split(/\s+/)[0];
   const trusted = level === "trusted";
-  const lines = checkLines(checks, name);
+  const lines = checkLines(checks);
 
   return (
     <>
@@ -54,7 +52,7 @@ export default function AgentBadge({ agentName, checks, listingCode }: Props) {
         <div className="flex flex-col gap-4 px-4 pt-3 pb-6">
           <span aria-hidden="true" className="h-1 w-10 self-center rounded-full bg-line" />
           <h2 id={titleId} className="text-lg leading-6 font-semibold">
-            {trusted ? `${name} is a Trusted agent` : `${name} is verified`}
+            Verified home
           </h2>
           <p className="text-sm text-muted">Here&apos;s exactly what FUT Homes has checked:</p>
           <ul className="flex flex-col gap-3">
@@ -68,7 +66,7 @@ export default function AgentBadge({ agentName, checks, listingCode }: Props) {
             ))}
           </ul>
           <p className="rounded-md bg-warning-50 p-3 text-sm text-ink">
-            <strong className="font-semibold text-warning">Still, never pay before you inspect.</strong> A badge shows an
+            <strong className="font-semibold text-warning">Still, never pay before you inspect.</strong> A badge shows the listing
             agent&apos;s track record, not that a deal is safe.
           </p>
           <div className="flex flex-col gap-1">
@@ -81,10 +79,10 @@ export default function AgentBadge({ agentName, checks, listingCode }: Props) {
               </button>
             </form>
             <a
-              href={`/report?agent=${encodeURIComponent(name)}${listingCode ? `&listing=${encodeURIComponent("#" + listingCode)}` : ""}`}
+              href={`/report${listingCode ? `?listing=${encodeURIComponent("#" + listingCode)}` : ""}`}
               className="flex h-11 items-center justify-center text-sm font-semibold text-error"
             >
-              Report this agent
+              Report this listing
             </a>
           </div>
         </div>
