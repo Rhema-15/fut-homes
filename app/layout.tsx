@@ -10,13 +10,13 @@ const bricolage = Bricolage_Grotesque({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://fut-homes.vercel.app"),
+  metadataBase: new URL("https://fut-homes.name.ng"),
   title: {
-    default: "FUT Homes · Rooms near FUTMINNA from verified agents",
+    default: "FUT Homes · Verified rooms near FUTMINNA",
     template: "%s · FUT Homes",
   },
   description:
-    "Find a room near Bosso or Gidan Kwano campus. Real videos, verified agents, and you pay only after you inspect.",
+    "Find a room near Bosso or Gidan Kwano campus. Real videos, verified homes, and you pay only after you inspect.",
   openGraph: { siteName: "FUT Homes", locale: "en_NG", type: "website" },
 };
 
