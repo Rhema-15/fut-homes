@@ -21,6 +21,7 @@ function parse(formData: FormData): Parsed {
   const title = text(formData, "title");
   const roomType = text(formData, "room_type");
   const roommateGender = text(formData, "roommate_gender");
+  const rentMonthsNum = Number(text(formData, "rent_months"));
   const campus = text(formData, "campus");
   const area = text(formData, "area");
   const priceDigits = text(formData, "price").replace(/\D/g, "");
@@ -62,7 +63,8 @@ function parse(formData: FormData): Parsed {
       fees_note: feesNote || null,
       agent_fee: agentFeeDigits ? Number(agentFeeDigits) : null,
       caution_fee: cautionFeeDigits ? Number(cautionFeeDigits) : null,
-            roommate_gender: roomType === "shared" && ["female", "male", "any"].includes(roommateGender) ? roommateGender : null,
+            rent_months: rentMonthsNum >= 1 && rentMonthsNum < 12 ? Math.round(rentMonthsNum) : null,
+      roommate_gender: roomType === "shared" && ["female", "male", "any"].includes(roommateGender) ? roommateGender : null,
       amenities,
       description: description || null,
       video_path: video,
@@ -74,7 +76,7 @@ function parse(formData: FormData): Parsed {
 }
 
 // Before SQL 007 is run these columns don't exist yet: save without them.
-const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee", "admin_note", "roommate_gender"];
+const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee", "admin_note", "roommate_gender", "rent_months"];
 function missingColumn(error: { code?: string; message: string } | null) {
   return !!error && (error.code === "42703" || error.code === "PGRST204");
 }
@@ -253,4 +255,5 @@ export async function deleteListing(id: string) {
     if (listing.video_path) await supabase.storage.from("videos").remove([listing.video_path]);
   }
   redirect("/admin/listings");
-}
+                       }
+      
