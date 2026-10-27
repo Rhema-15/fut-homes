@@ -255,5 +255,5 @@ export async function deleteListing(id: string) {
     if (listing.video_path) await supabase.storage.from("videos").remove([listing.video_path]);
   }
   redirect("/admin/listings");
-                       }
-      
+  }
+          
