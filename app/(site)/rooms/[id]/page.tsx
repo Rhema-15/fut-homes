@@ -5,13 +5,16 @@ import AgentBadge from "@/components/public/agent-badge";
 import Gallery from "@/components/public/gallery";
 import ShareRoom from "@/components/public/share-room";
 import { Icon } from "@/components/public/icons";
-import { AgentAvatar, ListingGrid } from "@/components/public/listing-card";
+import { ListingGrid } from "@/components/public/listing-card";
 import { SafetyWarning } from "@/components/public/site-chrome";
 import {
   CAMPUSES,
   ROOM_TYPES,
-  firstName,
   genderNote,
+  isPartial,
+  rentMonths,
+  rentPeriodText,
+  rentUnit,
   formatDuration,
   formatNaira,
   listingCode,
@@ -29,7 +32,7 @@ export const instant = false;
 export async function generateMetadata({ params }: PageProps<"/rooms/[id]">): Promise<Metadata> {
   const listing = await getListing((await params).id);
   if (!listing) return { title: "Room not found" };
-  const title = `${ROOM_TYPES[listing.room_type]}${listing.area ? ` in ${listing.area}` : ""}, ${formatNaira(listing.price)}/year`;
+  const title = `${ROOM_TYPES[listing.room_type]}${listing.area ? ` in ${listing.area}` : ""}, ${formatNaira(listing.price)}${rentUnit(listing.rent_months, true)}`;
   const description = `${listing.status === "taken" ? "Taken. " : ""}${listing.title}. On FUT Homes. Never pay before you inspect.`;
   return {
     title,
@@ -72,7 +75,7 @@ function KeyFacts({ listing }: { listing: PublicListing }) {
 
 function Fees({ listing }: { listing: PublicListing }) {
   const rows = [
-    { label: listing.room_type === "shared" ? "Your share of rent (1 year)" : "Rent (1 year)", amount: listing.price },
+    { label: listing.room_type === "shared" ? `Your share of rent (${rentPeriodText(listing.rent_months)})` : `Rent (${rentPeriodText(listing.rent_months)})`, amount: listing.price },
     listing.agent_fee !== null ? { label: "Agent fee", amount: listing.agent_fee } : null,
     listing.caution_fee !== null ? { label: "Caution fee", amount: listing.caution_fee } : null,
   ].filter((r) => r !== null);
@@ -144,7 +147,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
 
     const message =
     `Hi FUT Homes, I want to book an inspection: ${type}${genderNote(listing.room_type, listing.roommate_gender)}${listing.area ? ` in ${listing.area}` : ""}, ` +
-    `${formatNaira(listing.price)}/year (Listing #${code}, agent ${firstName(listing.agent.name)}).\n\n` +
+    `${formatNaira(listing.price)}${rentUnit(listing.rent_months, true)} (Listing #${code}).\n\n` +
     `https://${shortLink(listing.id)}`;
   const whatsappHref = whatsappLink(FUT_HOMES_WHATSAPP, message);
 
@@ -185,11 +188,20 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
             }
           >
             {formatNaira(listing.price)}
-            <span className="text-sm font-bold">/year</span>
+            <span className="text-sm font-bold">{rentUnit(listing.rent_months, true)}</span>
           </span>
           {listing.room_type === "shared" && <span className="text-sm font-bold text-muted">Price is your share</span>}
         </p>
       </section>
+
+      {isPartial(listing.rent_months) && (
+        <section className="px-[18px] pt-4 min-[768px]:px-0">
+          <p className="rounded-md border-2 border-ink bg-warning-50 p-3 font-bold text-ink">
+            <span className="text-warning">Not a full year.</span> This price covers only{" "}
+            {rentMonths(listing.rent_months)} months. Ask before you book.
+          </p>
+        </section>
+      )}
 
       <section className="px-[18px] pt-4 min-[768px]:px-0">
         <KeyFacts listing={listing} />
@@ -237,13 +249,15 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
 
       <section className="px-[18px] pt-6 min-[768px]:px-0">
         <div className="sticker flex flex-col gap-3 rounded-lg bg-white p-4">
-          <div className="flex items-center gap-3">
-            <AgentAvatar name={listing.agent.name} photo={listing.agent.photo_path} size={48} />
-            <div className="flex flex-col items-start gap-1">
-              <span className="text-lg leading-6 font-extrabold">{firstName(listing.agent.name)}</span>
-              <AgentBadge agentName={listing.agent.name} checks={{ long_time_poster: listing.agent.long_time_poster, still_posting: listing.agent.still_posting, students_confirmed: listing.agent.students_confirmed }} listingCode={code} />
-
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <AgentBadge
+              checks={{
+                long_time_poster: listing.agent.long_time_poster,
+                still_posting: listing.agent.still_posting,
+                students_confirmed: listing.agent.students_confirmed,
+              }}
+              listingCode={code}
+            />
           </div>
           <p className="text-sm font-medium text-muted">
             {daysAgo(listing.created_at)} · Listing #{code}
@@ -274,14 +288,14 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
       <section className="flex flex-col items-start px-[18px] pt-4 pb-8 min-[768px]:px-0">
         {!taken && (
           <Link
-            href={`/report?reason=taken&listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
+            href={`/report?reason=taken&listing=${encodeURIComponent("#" + code)}`}
             className="inline-flex min-h-11 items-center text-sm font-bold text-brand-700 underline underline-offset-4"
           >
             Already taken? Tell us
           </Link>
         )}
         <Link
-          href={`/report?listing=${encodeURIComponent("#" + code)}&agent=${encodeURIComponent(firstName(listing.agent.name))}`}
+          href={`/report?listing=${encodeURIComponent("#" + code)}`}
           className="inline-flex min-h-11 items-center gap-1.5 text-sm font-bold text-error"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -296,7 +310,9 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
         <div className="sticky bottom-0 z-10 mt-auto flex items-center gap-3 border-t-2 border-ink bg-white px-[18px] pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] min-[768px]:rounded-t-lg min-[768px]:border-x-2">
           <div className="min-w-0 flex-1">
             <div className="text-xl leading-6 font-extrabold">{formatNaira(listing.price)}</div>
-            <div className="text-xs leading-4 font-medium text-muted">per year</div>
+            <div className="text-xs leading-4 font-medium text-muted">
+              {isPartial(listing.rent_months) ? `for ${rentPeriodText(listing.rent_months)} only` : "per year"}
+            </div>
           </div>
           <a
             href={whatsappHref}
@@ -323,4 +339,5 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
       )}
     </div>
   );
-}
+     }
+                                                                            
