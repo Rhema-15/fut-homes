@@ -54,6 +54,7 @@ export type ListingDefaults = {
   agent_fee: number | null;
   caution_fee: number | null;
   roommate_gender?: string | null;
+  rent_months?: number | null;
   amenities: string[];
   description: string | null;
   video_path: string | null;
@@ -418,7 +419,7 @@ export default function ListingForm({
       </datalist>
 
       <label className="flex flex-col gap-1 text-sm">
-        Rent per year (₦)
+        Rent (₦) for the period below
         <input
           name="price"
           defaultValue={listing?.price ? listing.price : ""}
@@ -426,6 +427,17 @@ export default function ListingForm({
           placeholder="150,000 (leave empty if not known yet)"
           className={input}
         />
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm">
+        Rent covers
+        <select name="rent_months" defaultValue={listing?.rent_months ?? 12} className={input}>
+          {[12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((m) => (
+            <option key={m} value={m}>
+              {m === 12 ? "Full year (12 months)" : `Only ${m} months (not a full year)`}
+            </option>
+          ))}
+        </select>
       </label>
 
       <div className="grid grid-cols-2 gap-3">
@@ -494,82 +506,4 @@ export default function ListingForm({
       )}
       {Array.isArray(videoCheck) && videoCheck.length > 0 && (
         <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
-          <p className="font-semibold">Same video as a room you already listed:</p>
-          <ul className="mt-1 list-disc pl-5">
-            {videoCheck.map((m) => (
-              <li key={m.id}>
-                <a href={`/admin/listings/${m.id}`} target="_blank" rel="noreferrer" className="underline">
-                  {m.title}
-                </a>
-                {m.agent ? ` · ${m.agent}` : ""} · {m.shots} of {m.of} shots match
-              </li>
-            ))}
-          </ul>
-          <p className="mt-1">Don&apos;t save. Open it to check, then tap Clear and paste the next post.</p>
-        </div>
-      )}
-      {Array.isArray(videoCheck) && videoCheck.length === 0 && (
-        <p role="status" className="text-sm text-green-700">
-          ✓ Video doesn&apos;t match any room you&apos;ve listed.
-          {dupes.length > 0 ? " The price match above is a different room, so it's fine to save." : ""}
-        </p>
-      )}
-
-      <div className="flex flex-col gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm">
-        <p className="text-neutral-600">
-          Don&apos;t know something yet? Leave it empty and save. The room stays hidden and the list shows what&apos;s missing.
-        </p>
-        <label className="flex items-start gap-2">
-          <input type="checkbox" name="draft" checked={draft} onChange={(e) => setDraft(e.target.checked)} className="mt-0.5 size-4" />
-          <span>Keep it hidden for now, even if everything is filled in</span>
-        </label>
-        <label className="flex flex-col gap-1">
-          Note to self (only you see this)
-          <input
-            name="admin_note"
-            defaultValue={listing?.admin_note ?? ""}
-            placeholder="e.g. ask agent for the price and if it has a kitchen"
-            className={input}
-          />
-        </label>
-      </div>
-
-      {state.error && (
-        <p role="alert" className="text-sm text-red-600">
-          {state.error}
-        </p>
-      )}
-
-      {quickAdd ? (
-        <div className="flex flex-col gap-2">
-          <button
-            type="submit"
-            name="after"
-            value="new"
-            disabled={pending || uploading}
-            className="rounded-md bg-neutral-900 px-4 py-2 font-medium text-white disabled:opacity-60"
-          >
-            {uploading ? "Waiting for uploads…" : pending ? "Saving…" : "Save & add another"}
-          </button>
-          <button
-            type="submit"
-            name="after"
-            value="list"
-            disabled={pending || uploading}
-            className="rounded-md border border-neutral-300 px-4 py-2 font-medium disabled:opacity-60"
-          >
-            Save & see all listings
-          </button>
-        </div>
-      ) : (
-        <button
-          type="submit"
-          disabled={pending || uploading}
-          className="rounded-md bg-neutral-900 px-4 py-2 font-medium text-white disabled:opacity-60"
-        >
-          {uploading ? "Waiting for uploads…" : pending ? "Saving…" : submitLabel}
-        </button>
-      )}
-    </form>
-  );
-}
+    
