@@ -356,4 +356,4 @@ export async function makeShareCard(d: ShareCardData): Promise<Blob> {
   return new Promise((resolve, reject) =>
     out.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not make image"))), "image/jpeg", 0.88),
   );
-}
+  }
