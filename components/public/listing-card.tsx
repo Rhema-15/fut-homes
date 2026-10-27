@@ -1,8 +1,17 @@
-import { genderNote } from "@/lib/options";
 import Link from "next/link";
 import type { PublicListing } from "@/lib/public-data";
-import { badgeLevel } from "@/lib/agent-checks";
-import { ROOM_TYPES, formatDistanceShort, formatDuration, formatNaira, photoUrl } from "@/lib/options";
+import { BADGE_LABEL, badgeLevel } from "@/lib/agent-checks";
+import {
+  ROOM_TYPES,
+  formatDistanceShort,
+  formatDuration,
+  formatNaira,
+  genderNote,
+  isPartial,
+  photoUrl,
+  rentMonths,
+  rentUnit,
+} from "@/lib/options";
 import { AMENITIES } from "@/lib/amenities";
 
 // Price stickers rotate through the sticker colours so a list of rooms
@@ -66,6 +75,11 @@ export default function ListingCard({ listing, index = 0 }: { listing: PublicLis
           >
             {taken ? "Taken" : "Available"}
           </span>
+          {!taken && isPartial(listing.rent_months) && (
+            <span className="rounded-full bg-error px-2 py-px text-xs leading-4 font-bold text-white">
+              Only {rentMonths(listing.rent_months)} months
+            </span>
+          )}
           {level && (
             <span
               className={
@@ -73,7 +87,7 @@ export default function ListingCard({ listing, index = 0 }: { listing: PublicLis
                 (level === "trusted" ? "bg-brand-700 text-white" : "bg-brand-50 text-brand-700")
               }
             >
-              {level === "trusted" ? "Trusted agent" : "Verified agent"}
+              {BADGE_LABEL[level]}
             </span>
           )}
         </span>
@@ -87,7 +101,7 @@ export default function ListingCard({ listing, index = 0 }: { listing: PublicLis
           }
         >
           {formatNaira(listing.price)}
-          <span className="text-xs font-bold">/yr{shared ? " · your share" : ""}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}</span>
+          <span className="text-xs font-bold">{rentUnit(listing.rent_months)}{shared ? " · your share" : ""}{genderNote(listing.room_type, listing.roommate_gender)}</span>
         </span>
       </span>
     </Link>
@@ -167,7 +181,7 @@ export function LargeListingCard({ listing, index = 0 }: { listing: PublicListin
           }
         >
           {formatNaira(listing.price)}
-          <span className="text-xs font-bold">/yr{shared ? " · your share" : ""}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}{genderNote(listing.room_type, listing.roommate_gender)}</span>
+          <span className="text-xs font-bold">{rentUnit(listing.rent_months)}{shared ? " · your share" : ""}{genderNote(listing.room_type, listing.roommate_gender)}</span>
         </span>
       </span>
       <span className="flex flex-col gap-1 px-3.5 pt-3.5 pb-3.5">
@@ -177,6 +191,11 @@ export function LargeListingCard({ listing, index = 0 }: { listing: PublicListin
         </span>
         <span className="flex flex-wrap gap-1.5 pt-1">
           <span className="rounded-full bg-success-50 px-2 py-px text-xs leading-4 font-bold text-success">Available</span>
+          {isPartial(listing.rent_months) && (
+            <span className="rounded-full bg-error px-2 py-px text-xs leading-4 font-bold text-white">
+              Only {rentMonths(listing.rent_months)} months
+            </span>
+          )}
           {level && (
             <span
               className={
@@ -184,7 +203,7 @@ export function LargeListingCard({ listing, index = 0 }: { listing: PublicListin
                 (level === "trusted" ? "bg-brand-700 text-white" : "bg-brand-50 text-brand-700")
               }
             >
-              {level === "trusted" ? "Trusted agent" : "Verified agent"}
+              {BADGE_LABEL[level]}
             </span>
           )}
           {listing.amenities.slice(0, 2).map((a) => (
@@ -206,4 +225,5 @@ export function ListingGrid({ listings, large = false }: { listings: PublicListi
       )}
     </div>
   );
-}
+                                                        }
+      
