@@ -17,9 +17,9 @@ export const metadata: Metadata = { title: "Edit listing · FUT Homes admin", ro
 
 // The SQL 007 fields are read separately: before that SQL is run the
 // query just fails and the form shows them empty.
-type Extras = { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null; admin_note?: string | null; roommate_gender?: string | null };
+type Extras = { amenities?: string[] | null; agent_fee?: number | null; caution_fee?: number | null; admin_note?: string | null; roommate_gender?: string | null; rent_months?: number | null };
 async function loadExtras(supabase: Awaited<ReturnType<typeof createClient>>, id: string): Promise<Extras> {
-  for (const cols of ["amenities, agent_fee, caution_fee, roommate_gender, admin_note","amenities, agent_fee, caution_fee, admin_note", "amenities, agent_fee, caution_fee", "admin_note"]) {
+  for (const cols of ["amenities, agent_fee, caution_fee, roommate_gender, rent_months, admin_note", "amenities, agent_fee, caution_fee, roommate_gender, admin_note","amenities, agent_fee, caution_fee, admin_note", "amenities, agent_fee, caution_fee", "admin_note"]) {
     const { data, error } = await supabase.from("listings").select(cols).eq("id", id).maybeSingle();
     if (!error) return (data ?? {}) as Extras;
   }
@@ -123,6 +123,12 @@ export default async function EditListingPage({ params, searchParams }: PageProp
               area: listing.area,
               distance_km: listing.distance_km === null ? null : Number(listing.distance_km),
               price: listing.price,
+              rent_months: extras.rent_months ?? null,
+              roommate_gender: extras.roommate_gender ?? null,
+              amenities: extras.amenities ?? [],
+              agent_fee: extras.agent_fee ?? null,
+              caution_fee: extras.caution_fee ?? null,
+              fees_note: (listing as { fees_note?: string | null }).fees_note ?? null,
               video_path: listing.video_path,
               photos,
               badge: (() => {
@@ -159,6 +165,7 @@ export default async function EditListingPage({ params, searchParams }: PageProp
           agent_fee: extras.agent_fee ?? null,
           caution_fee: extras.caution_fee ?? null,
           roommate_gender: extras.roommate_gender ?? null,
+          rent_months: extras.rent_months ?? null,
           amenities: extras.amenities ?? [],
           description: listing.description,
           video_path: listing.video_path,
