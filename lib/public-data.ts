@@ -36,6 +36,7 @@ export type PublicListing = {
   agent_fee: number | null;
   caution_fee: number | null;
   roommate_gender: string | null;
+  rent_months: number | null;
   amenities: Amenity[];
   description: string | null;
   status: "available" | "taken";
@@ -55,6 +56,7 @@ const AGENT_AND_PHOTOS =
 // "column missing" (42703) and we retry with the older column set, so the
 // site keeps working (without that feature) until the SQL is run.
 const SELECTS: [select: string, hasConfirmed: boolean][] = [
+  [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, roommate_gender, rent_months, " + AGENT_AND_PHOTOS, true], // SQL 010
   [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, roommate_gender, " + AGENT_AND_PHOTOS, true], // SQL 009
   [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, " + AGENT_AND_PHOTOS, true], // SQL 007
   [LISTING_COLS + "confirmed_at, " + AGENT_AND_PHOTOS, true], // SQL 006
@@ -90,12 +92,13 @@ function visibleFilter(hasConfirmed: boolean) {
 }
 
 
-type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee" | "roommate_gender"> & {
+type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee" | "roommate_gender" | "rent_months"> & {
   confirmed_at?: string | null;
   amenities?: unknown;
   agent_fee?: number | null;
   caution_fee?: number | null;
   roommate_gender?: string | null;
+  rent_months?: number | null;
   agents: Omit<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed"> &
     Partial<Pick<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed">>;
   listing_photos: { path: string; position: number }[];
@@ -110,6 +113,7 @@ function shape(row: Row): PublicListing {
     agent_fee: rest.agent_fee ?? null,
     caution_fee: rest.caution_fee ?? null,
     roommate_gender: rest.roommate_gender ?? null,
+    rent_months: rest.rent_months ?? null,
     distance_km: rest.distance_km === null ? null : Number(rest.distance_km),
     agent: {
       ...agents,
@@ -270,4 +274,5 @@ export async function listAreas(): Promise<AreaSummary[]> {
     } else byArea.set(key, { area: r.area.trim(), campus: r.campus, count: 1, cover: r.photos[0] ?? null, minPrice: r.price });
   }
   return [...byArea.values()].sort((a, b) => b.count - a.count || a.area.localeCompare(b.area));
-}
+  }
+             
