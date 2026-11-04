@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@supabase/supabase-js";
 
 // Agents log in with their WhatsApp number + a password Rhema sets.
-// Everything runs through database functions (supabase/migrations/012);
+// Everything runs through database functions (supabase/migrations/012 and 013);
 // the browser only ever holds a random session token in a private cookie.
 
 export const AGENT_COOKIE = "fh_agent";
@@ -16,15 +16,25 @@ export function anonClient() {
 
 export type PortalRoom = {
   id: string;
+  title: string | null;
+  description: string | null;
   room_type: string | null;
   campus: string | null;
   area: string | null;
   price: number;
   rent_months: number | null;
+  roommate_gender: string | null;
+  amenities: string[] | null;
+  agent_fee: number | null;
+  caution_fee: number | null;
+  fees_note: string | null;
+  photos: string[];
+  video_path: string | null;
+  video_seconds: number | null;
   confirmed_at: string | null;
-  photo: string | null;
   answer: "available" | "taken" | null;
   answered_at: string | null;
+  reviewed_at: string | null;
 };
 
 export type Portal = { name: string; must_change: boolean; rooms: PortalRoom[] };
