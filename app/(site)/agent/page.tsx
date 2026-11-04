@@ -111,9 +111,6 @@ function RoomCard({ room, number, total }: { room: PortalRoom; number: number; t
             </p>
           )}
           <p className="text-base font-extrabold text-ink">Is this room still available?</p>
-          <p className="mt-1 text-sm text-muted">
-            {answered ? "Your answer is saved. Tap the other button to change it." : "Tap one button. It&apos;s saved right away."}
-          </p>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <form action={answerRoom.bind(null, room.id, "available")}>
               <button
