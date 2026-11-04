@@ -6,6 +6,8 @@ import { getPortal, type PortalRoom } from "@/lib/agent-portal";
 import { AMENITIES } from "@/lib/amenities";
 import { ROOM_TYPES, type RoomType, formatDuration, formatNaira, rentPeriodText, rentUnit } from "@/lib/options";
 
+export const dynamic = "force-dynamic";
+
 function savedLine(room: PortalRoom): string | null {
   if (!room.answer) return null;
   const when = room.answered_at
