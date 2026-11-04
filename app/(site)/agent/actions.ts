@@ -72,4 +72,4 @@ export async function finishReset(_prev: FormState, formData: FormData): Promise
   if (data === "locked") return { error: "Too many wrong tries. Wait 15 minutes, then try again." };
   if (data !== "ok") return { error: "That code didn't work or it expired. Ask for a new one." };
   redirect("/agent/login?reset=1");
-    }
+}
