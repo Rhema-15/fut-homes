@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getPortal } from "@/lib/agent-portal";
 import { LoginForm } from "../forms";
 
+export const dynamic = "force-dynamic";
+
 export const instant = false;
 
 export const metadata: Metadata = {
