@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AgentBadge from "@/components/public/agent-badge";
+import { placeLabel } from "@/lib/locations";
 import Gallery from "@/components/public/gallery";
 import ShareRoom from "@/components/public/share-room";
 import { Icon } from "@/components/public/icons";
@@ -32,7 +33,7 @@ export const instant = false;
 export async function generateMetadata({ params }: PageProps<"/rooms/[id]">): Promise<Metadata> {
   const listing = await getListing((await params).id);
   if (!listing) return { title: "Room not found" };
-  const title = `${ROOM_TYPES[listing.room_type]}${listing.area ? ` in ${listing.area}` : ""}, ${formatNaira(listing.price)}${rentUnit(listing.rent_months, true)}`;
+  const title = `${ROOM_TYPES[listing.room_type]}${placeLabel(listing) ? ` in ${placeLabel(listing)}` : ""}, ${formatNaira(listing.price)}${rentUnit(listing.rent_months, true)}`;
   const description = `${listing.status === "taken" ? "Taken. " : ""}${listing.title}. On FUT Homes. Never pay before you inspect.`;
   return {
     title,
@@ -53,7 +54,7 @@ function KeyFacts({ listing }: { listing: PublicListing }) {
   const campusShort = listing.campus === "bosso" ? "Bosso" : "GK";
   const facts = [
     { icon: "home" as const, value: ROOM_TYPES[listing.room_type], label: "Room type" },
-    { icon: "map-pin" as const, value: listing.area ?? CAMPUSES[listing.campus], label: listing.area ? "Area" : "Near campus" },
+    { icon: "map-pin" as const, value: placeLabel(listing) ?? CAMPUSES[listing.campus], label: placeLabel(listing) ? "Area" : "Near campus" },
     listing.distance_km !== null
       ? { icon: "navigation" as const, value: `${listing.distance_km.toFixed(1)} km`, label: `to ${campusShort} campus` }
       : { icon: "navigation" as const, value: campusShort, label: "Nearest campus" },
@@ -146,7 +147,7 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
     : `/rooms?where=${listing.campus}`;
 
     const message =
-    `Hi FUT Homes, I want to book an inspection: ${type}${genderNote(listing.room_type, listing.roommate_gender)}${listing.area ? ` in ${listing.area}` : ""}, ` +
+    `Hi FUT Homes, I want to book an inspection: ${type}${genderNote(listing.room_type, listing.roommate_gender)}${placeLabel(listing) ? ` in ${placeLabel(listing)}` : ""}, ` +
     `${formatNaira(listing.price)}${rentUnit(listing.rent_months, true)} (Listing #${code}).\n\n` +
     `https://${shortLink(listing.id)}`;
   const whatsappHref = whatsappLink(FUT_HOMES_WHATSAPP, message);
@@ -340,4 +341,5 @@ export default async function ListingPage({ params }: PageProps<"/rooms/[id]">) 
     </div>
   );
      }
-                                                                            
+
+    
