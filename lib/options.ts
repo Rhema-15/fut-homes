@@ -123,3 +123,7 @@ export function rentPeriodText(m: number | null | undefined): string {
   const n = rentMonths(m);
   return n === 12 ? "1 year" : `${n} month${n === 1 ? "" : "s"}`;
 }
+
+// Budget steps in the search (a room shows if its price is at or below it).
+export const BUDGETS = [80000, 100000, 130000, 150000, 200000, 250000, 300000, 350000, 400000, 500000] as const;
+  
