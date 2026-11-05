@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { placeLabel } from "@/lib/locations";
 import type { PublicListing } from "@/lib/public-data";
 import { BADGE_LABEL, badgeLevel } from "@/lib/agent-checks";
 import {
@@ -64,7 +65,7 @@ export default function ListingCard({ listing, index = 0 }: { listing: PublicLis
           {ROOM_TYPES[listing.room_type]}
         </span>
         <span className="truncate text-sm leading-[18px] font-medium text-muted">
-          {[listing.area, distance ?? (listing.campus === "bosso" ? "Near Bosso" : "Near GK")].filter(Boolean).join(" · ")}
+          {[placeLabel(listing), distance ?? (listing.campus === "bosso" ? "Near Bosso" : "Near GK")].filter(Boolean).join(" · ")}
         </span>
         <span className="mt-0.5 flex flex-wrap gap-1.5">
           <span
@@ -187,7 +188,7 @@ export function LargeListingCard({ listing, index = 0 }: { listing: PublicListin
       <span className="flex flex-col gap-1 px-3.5 pt-3.5 pb-3.5">
         <span className="pr-28 text-[18px] leading-[22px] font-extrabold tracking-[-0.02em]">{ROOM_TYPES[listing.room_type]}</span>
         <span className="text-sm leading-[18px] font-medium text-muted">
-          {[listing.area, distance ?? (listing.campus === "bosso" ? "Near Bosso" : "Near GK")].filter(Boolean).join(" · ")}
+          {[placeLabel(listing), distance ?? (listing.campus === "bosso" ? "Near Bosso" : "Near GK")].filter(Boolean).join(" · ")}
         </span>
         <span className="flex flex-wrap gap-1.5 pt-1">
           <span className="rounded-full bg-success-50 px-2 py-px text-xs leading-4 font-bold text-success">Available</span>
@@ -226,4 +227,5 @@ export function ListingGrid({ listings, large = false }: { listings: PublicListi
     </div>
   );
                                                         }
-      
+
+  
