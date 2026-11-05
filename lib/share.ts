@@ -1,5 +1,6 @@
 import type { ShareCardData } from "@/lib/share-card";
 import type { BadgeLevel } from "@/lib/agent-checks";
+import { placeLabel } from "@/lib/locations";
 import { AMENITIES } from "@/lib/amenities";
 import {
   ROOMMATE_GENDERS,
@@ -27,6 +28,7 @@ type ListingLike = {
   room_type: RoomType;
   campus: Campus;
   area: string | null;
+  location?: string | null;
   distance_km: number | null;
   price: number;
   rent_months?: number | null;
@@ -46,6 +48,7 @@ export function shareData(l: ListingLike): { card: ShareCardData; caption: strin
   const link = shortLink(l.id);
   const code = listingCode(l.id);
   const unit = rentUnit(l.rent_months, true);
+  const place = placeLabel(l);
 
   const tags: { text: string; tone: "warn" | "gender" }[] = [];
   if (isPartial(l.rent_months)) tags.push({ text: `Only ${rentMonths(l.rent_months)} months, not a full year`, tone: "warn" });
@@ -67,7 +70,7 @@ export function shareData(l: ListingLike): { card: ShareCardData; caption: strin
   const feeRows = rows.length > 1 ? rows.map((r) => ({ label: r.label, amount: formatNaira(r.amount) })) : [];
 
   const caption = [
-    `${type}${l.area ? ` in ${l.area}` : ""}, ${formatNaira(l.price)}${unit}`,
+    `${type}${place ? ` in ${place}` : ""}, ${formatNaira(l.price)}${unit}`,
     gender ? `${gender} (shared room, price is your share)` : null,
     isPartial(l.rent_months) ? `Only ${rentMonths(l.rent_months)} months, not a full year.` : null,
     distance,
@@ -89,7 +92,7 @@ export function shareData(l: ListingLike): { card: ShareCardData; caption: strin
       price: formatNaira(l.price),
       unit,
       roomType: type,
-      area: l.area,
+      area: place,
       distance,
       badge: l.badge,
       hasVideo: Boolean(l.video_path),
@@ -103,3 +106,4 @@ export function shareData(l: ListingLike): { card: ShareCardData; caption: strin
     },
   };
 }
+  
