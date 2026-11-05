@@ -8,13 +8,14 @@ import SortSelect from "@/components/public/sort-select";
 import { SafetyWarning } from "@/components/public/site-chrome";
 import { FUT_HOMES_WHATSAPP, whatsappLink } from "@/lib/contact";
 import { CAMPUSES, ROOM_TYPES, formatNaira } from "@/lib/options";
+import { whereLabel } from "@/lib/locations";
 import { type AreaSummary, BUDGETS, type Filters, filtersToQuery, listAreas, readFilters, searchListings } from "@/lib/public-data";
 
 export const instant = false;
 
 export async function generateMetadata({ searchParams }: PageProps<"/rooms">): Promise<Metadata> {
   const f = readFilters(await searchParams);
-  return { title: f.area ? `Rooms in ${f.area}` : f.campus ? `Rooms near ${CAMPUSES[f.campus]}` : "Rooms near FUTMINNA" };
+  return { title: whereLabel(f.location, f.area) ? `Rooms in ${whereLabel(f.location, f.area)}` : f.campus ? `Rooms near ${CAMPUSES[f.campus]}` : "Rooms near FUTMINNA" };
 }
 
 export default async function RoomsPage({ searchParams }: PageProps<"/rooms">) {
@@ -23,8 +24,8 @@ export default async function RoomsPage({ searchParams }: PageProps<"/rooms">) {
     searchListings(filters),
     listAreas().catch(() => [] as AreaSummary[]),
   ]);
-  const heading = filters.area
-    ? `Rooms in ${filters.area}`
+  const heading = whereLabel(filters.location, filters.area)
+    ? `Rooms in ${whereLabel(filters.location, filters.area)}`
     : filters.campus
       ? `Rooms near ${CAMPUSES[filters.campus]}`
       : "All rooms";
@@ -67,7 +68,7 @@ export default async function RoomsPage({ searchParams }: PageProps<"/rooms">) {
 // What you searched, pinned under the header while you scroll. Tap to
 // open the search form right there.
 function SearchSummary({ filters, areas }: { filters: Filters; areas: AreaSummary[] }) {
-  const where = filters.area ?? (filters.campus ? `Near ${CAMPUSES[filters.campus]}` : "Anywhere near FUT");
+  const where = whereLabel(filters.location, filters.area) ?? (filters.campus ? `Near ${CAMPUSES[filters.campus]}` : "Anywhere near FUT");
   const details = [
     filters.type ? ROOM_TYPES[filters.type] : "Any room type",
     filters.max ? `up to ${formatNaira(filters.max)}` : "any budget",
@@ -98,7 +99,7 @@ function SearchSummary({ filters, areas }: { filters: Filters; areas: AreaSummar
 function CantFind({ filters }: { filters: Filters }) {
   const want = [
     filters.type ? ROOM_TYPES[filters.type] : "a room",
-    filters.area ? `in ${filters.area}` : filters.campus ? `near ${CAMPUSES[filters.campus]}` : "near FUT",
+    whereLabel(filters.location, filters.area) ? `in ${whereLabel(filters.location, filters.area)}` : filters.campus ? `near ${CAMPUSES[filters.campus]}` : "near FUT",
     filters.max ? `up to ${formatNaira(filters.max)}/year` : null,
   ]
     .filter(Boolean)
@@ -158,9 +159,9 @@ function EmptyState({ filters }: { filters: Filters }) {
             Show all room types
           </Link>
         )}
-        {(filters.campus || filters.area) && (
+        {(filters.campus || filters.area || filters.location) && (
           <Link
-            href={`/rooms${filtersToQuery({ ...filters, campus: null, area: null })}`}
+            href={`/rooms${filtersToQuery({ ...filters, campus: null, area: null, location: null })}`}
             className="sticker flex h-12 items-center justify-center rounded-md bg-white font-extrabold text-ink"
           >
             Search everywhere
@@ -169,4 +170,4 @@ function EmptyState({ filters }: { filters: Filters }) {
       </div>
     </section>
   );
-}
+              }
