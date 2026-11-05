@@ -1,10 +1,13 @@
-import { ROOM_TYPES, formatNaira } from "@/lib/options";
-import { type AreaSummary, BUDGETS, type Filters } from "@/lib/public-data";
+"use client";
 
-const select =
-  "h-11 w-full rounded-[12px] border-2 border-ink bg-white px-2.5 text-[15px] font-medium text-ink";
+import { useState } from "react";
+import { LOCATIONS, isLocation } from "@/lib/locations";
+import { BUDGETS, ROOM_TYPES, formatNaira } from "@/lib/options";
+import type { AreaSummary, Filters } from "@/lib/public-data";
+import ThemedSelect from "./themed-select";
 
-// Plain GET form: works without JavaScript and on the slowest phones.
+// Pick a main location (GK, Dama...), then optionally a sub-area (Talba Road...).
+// A plain GET form underneath: the hidden inputs carry the choices to /rooms.
 export default function SearchForm({
   filters,
   areas,
@@ -14,50 +17,66 @@ export default function SearchForm({
   areas: AreaSummary[];
   submitLabel?: string;
 }) {
-  const where = filters?.area ? `area:${filters.area}` : (filters?.campus ?? "");
+  const [location, setLocation] = useState(filters?.location ?? "");
+  const [area, setArea] = useState(filters?.area ?? "");
+  const [type, setType] = useState(filters?.type ?? "");
+  const [max, setMax] = useState(filters?.max ? String(filters.max) : "");
+
+  const loc = isLocation(location) ? LOCATIONS[location] : null;
+  const ownName = (a: string) => !!loc && [loc.label, loc.full].some((n) => n.toLowerCase() === a.toLowerCase());
+  const subAreas = areas.filter((a) => (location ? a.location === location : true) && !ownName(a.area));
+  const showArea = location ? subAreas.length > 0 : area !== "";
+
   return (
-    <form action="/rooms" method="get" className="flex flex-col gap-2.5">
-      <label className="flex flex-col gap-1 text-[13px] font-bold">
-        Where?
-        <select name="where" defaultValue={where} className={select}>
-          <option value="">Anywhere near FUT</option>
-          <option value="bosso">Near Bosso campus</option>
-          <option value="gidan_kwano">Near Gidan Kwano campus</option>
-          {areas.length > 0 && (
-            <optgroup label="Areas">
-              {areas.map((a) => (
-                <option key={a.area} value={`area:${a.area}`}>
-                  {a.area}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
-      </label>
+    <form action="/rooms" method="get" className="flex flex-col gap-3">
+      <ThemedSelect
+        name="where"
+        label="Where?"
+        title="Choose a location"
+        value={location}
+        onChange={(v) => {
+          setLocation(v);
+          setArea("");
+        }}
+        options={[
+          { value: "", label: "Anywhere near FUT" },
+          ...Object.entries(LOCATIONS).map(([value, l]) => ({ value, label: l.full })),
+        ]}
+      />
+
+      {showArea && (
+        <ThemedSelect
+          name="area"
+          label={loc ? `Area in ${loc.label}` : "Area"}
+          title={loc ? `Areas in ${loc.label}` : "Choose an area"}
+          value={area}
+          onChange={setArea}
+          options={[
+            { value: "", label: loc ? `All of ${loc.label}` : "Any area" },
+            ...(area && !subAreas.some((a) => a.area.toLowerCase() === area.toLowerCase()) ? [{ value: area, label: area }] : []),
+            ...subAreas.map((a) => ({ value: a.area, label: a.area, hint: `${a.count} room${a.count === 1 ? "" : "s"}` })),
+          ]}
+        />
+      )}
+      {!showArea && <input type="hidden" name="area" value="" />}
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1 text-[13px] font-bold">
-          Room type
-          <select name="type" defaultValue={filters?.type ?? ""} className={select}>
-            <option value="">Any</option>
-            {Object.entries(ROOM_TYPES).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-[13px] font-bold">
-          Max budget
-          <select name="max" defaultValue={filters?.max ? String(filters.max) : ""} className={select}>
-            <option value="">Any budget</option>
-            {BUDGETS.map((b) => (
-              <option key={b} value={b}>
-                {formatNaira(b)}
-              </option>
-            ))}
-          </select>
-        </label>
+        <ThemedSelect
+          name="type"
+          label="Room type"
+          title="Room type"
+          value={type}
+          onChange={setType}
+          options={[{ value: "", label: "Any" }, ...Object.entries(ROOM_TYPES).map(([value, label]) => ({ value, label }))]}
+        />
+        <ThemedSelect
+          name="max"
+          label="Max budget"
+          title="Your budget"
+          value={max}
+          onChange={setMax}
+          options={[{ value: "", label: "Any budget" }, ...BUDGETS.map((b) => ({ value: String(b), label: `Up to ${formatNaira(b)}` }))]}
+        />
       </div>
 
       {filters?.sort && filters.sort !== "near" && <input type="hidden" name="sort" value={filters.sort} />}
