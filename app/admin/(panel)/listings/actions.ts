@@ -1,5 +1,6 @@
 "use server";
 
+import { isLocation } from "@/lib/locations";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { type FormState, pathList, saveError, text, videoPath } from "@/lib/form-utils";
@@ -24,6 +25,7 @@ function parse(formData: FormData): Parsed {
   const rentMonthsNum = Number(text(formData, "rent_months"));
   const campus = text(formData, "campus");
   const area = text(formData, "area");
+  const locationRaw = text(formData, "location");
   const priceDigits = text(formData, "price").replace(/\D/g, "");
   const distanceText = text(formData, "distance_km").replace(",", ".");
   const distance = distanceText ? Number(distanceText) : null;
@@ -58,6 +60,7 @@ function parse(formData: FormData): Parsed {
       room_type: roomType || null,
       campus: campus || null,
       area: area || null,
+      location: isLocation(locationRaw) ? locationRaw : null,
       price,
       distance_km: distance === null ? null : Math.round(distance * 10) / 10,
       fees_note: feesNote || null,
@@ -76,7 +79,7 @@ function parse(formData: FormData): Parsed {
 }
 
 // Before SQL 007 is run these columns don't exist yet: save without them.
-const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee", "admin_note", "roommate_gender", "rent_months"];
+const NEW_FIELDS = ["amenities", "agent_fee", "caution_fee", "admin_note", "roommate_gender", "rent_months", "location"];
 function missingColumn(error: { code?: string; message: string } | null) {
   return !!error && (error.code === "42703" || error.code === "PGRST204");
 }
@@ -256,4 +259,5 @@ export async function deleteListing(id: string) {
   }
   redirect("/admin/listings");
   }
-          
+
+      
