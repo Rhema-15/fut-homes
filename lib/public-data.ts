@@ -2,6 +2,8 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { connection } from "next/server";
 import { CAMPUSES, ROOM_TYPES, type Campus, type RoomType, isOneOf } from "@/lib/options";
+import { BUDGETS } from "@/lib/options";
+import { LOCATIONS, isLocation } from "@/lib/locations";
 import { cleanAmenities, type Amenity } from "@/lib/amenities";
 
 // Public pages read with the anon key, no cookies. Row Level Security
@@ -37,6 +39,7 @@ export type PublicListing = {
   caution_fee: number | null;
   roommate_gender: string | null;
   rent_months: number | null;
+  location: string | null;
   amenities: Amenity[];
   description: string | null;
   status: "available" | "taken";
@@ -56,6 +59,7 @@ const AGENT_AND_PHOTOS =
 // "column missing" (42703) and we retry with the older column set, so the
 // site keeps working (without that feature) until the SQL is run.
 const SELECTS: [select: string, hasConfirmed: boolean][] = [
+  [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, roommate_gender, rent_months, location, " + AGENT_AND_PHOTOS, true], // SQL 011
   [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, roommate_gender, rent_months, " + AGENT_AND_PHOTOS, true], // SQL 010
   [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, roommate_gender, " + AGENT_AND_PHOTOS, true], // SQL 009
   [LISTING_COLS + "confirmed_at, amenities, agent_fee, caution_fee, " + AGENT_AND_PHOTOS, true], // SQL 007
@@ -92,13 +96,14 @@ function visibleFilter(hasConfirmed: boolean) {
 }
 
 
-type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee" | "roommate_gender" | "rent_months"> & {
+type Row = Omit<PublicListing, "agent" | "photos" | "confirmed_at" | "amenities" | "agent_fee" | "caution_fee" | "roommate_gender" | "rent_months" | "location"> & {
   confirmed_at?: string | null;
   amenities?: unknown;
   agent_fee?: number | null;
   caution_fee?: number | null;
   roommate_gender?: string | null;
   rent_months?: number | null;
+  location?: string | null;
   agents: Omit<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed"> &
     Partial<Pick<PublicAgent, "long_time_poster" | "still_posting" | "students_confirmed">>;
   listing_photos: { path: string; position: number }[];
@@ -114,6 +119,7 @@ function shape(row: Row): PublicListing {
     caution_fee: rest.caution_fee ?? null,
     roommate_gender: rest.roommate_gender ?? null,
     rent_months: rest.rent_months ?? null,
+    location: rest.location ?? null,
     distance_km: rest.distance_km === null ? null : Number(rest.distance_km),
     agent: {
       ...agents,
@@ -128,9 +134,10 @@ function shape(row: Row): PublicListing {
 import { SORTS, type Sort } from "@/lib/sorts";
 export { SORTS, type Sort };
 
-export const BUDGETS = [150000, 200000, 250000, 350000, 500000] as const;
+export { BUDGETS };
 
 export type Filters = {
+  location?: string | null;
   campus: Campus | null;
   area: string | null;
   type: RoomType | null;
@@ -143,14 +150,18 @@ export function readFilters(params: Record<string, string | string[] | undefined
     const v = params[key];
     return typeof v === "string" ? v : Array.isArray(v) ? (v[0] ?? "") : "";
   };
-  // "where" from the search box: a campus id, or "area:<name>".
+  // "where" is a top location (gk, dama, ...). Old links used where=bosso,
+  // where=gidan_kwano or where=area:<name>, and still work.
   const where = one("where");
-  const campus = where && !where.startsWith("area:") ? where : one("campus");
+  let location = where && !where.startsWith("area:") ? where : one("location");
+  if (location === "gidan_kwano") location = "gk";
+  const campus = one("campus");
   const area = (where.startsWith("area:") ? where.slice(5) : one("area")).trim().slice(0, 60);
   const type = one("type");
   const max = Number(one("max"));
   const sort = one("sort");
   return {
+    location: isLocation(location) ? location : null,
     campus: isOneOf(CAMPUSES, campus) ? campus : null,
     area: area || null,
     type: isOneOf(ROOM_TYPES, type) ? type : null,
@@ -161,8 +172,9 @@ export function readFilters(params: Record<string, string | string[] | undefined
 
 export function filtersToQuery(filters: Partial<Filters>): string {
   const q = new URLSearchParams();
-  if (filters.area) q.set("where", `area:${filters.area}`);
-  else if (filters.campus) q.set("where", filters.campus);
+  if (filters.location) q.set("where", filters.location);
+  if (filters.area) q.set("area", filters.area);
+  else if (!filters.location && filters.campus) q.set("campus", filters.campus);
   if (filters.type) q.set("type", filters.type);
   if (filters.max) q.set("max", String(filters.max));
   if (filters.sort && filters.sort !== "near") q.set("sort", filters.sort);
@@ -172,25 +184,35 @@ export function filtersToQuery(filters: Partial<Filters>): string {
 
 export async function searchListings(filters: Filters, limit = 60): Promise<PublicListing[]> {
   await connection();
-  const { data, error } = await withFallback<Row[]>((select, hasConfirmed) => {
-    let query = publicClient().from("listings").select(select).eq("agents.is_active", true);
-    if (filters.campus) query = query.eq("campus", filters.campus);
-    if (filters.area) query = query.ilike("area", filters.area.replace(/[%_]/g, ""));
-    if (filters.type) query = query.eq("room_type", filters.type);
-    if (filters.max) query = query.lte("price", filters.max);
+  const run = (useLocation: boolean) =>
+    withFallback<Row[]>((select, hasConfirmed) => {
+      let query = publicClient().from("listings").select(select).eq("agents.is_active", true);
+      if (filters.location && isLocation(filters.location)) {
+        if (useLocation) query = query.eq("location", filters.location);
+        // Before SQL 011 is run there is no location column: use what we have.
+        else if (filters.location === "gk") query = query.eq("campus", "gidan_kwano");
+        else if (filters.location === "bosso") query = query.eq("campus", "bosso");
+        else query = query.ilike("area", LOCATIONS[filters.location].label.replace(/[%_]/g, ""));
+      }
+      if (filters.campus) query = query.eq("campus", filters.campus);
+      if (filters.area) query = query.ilike("area", filters.area.replace(/[%_]/g, ""));
+      if (filters.type) query = query.eq("room_type", filters.type);
+      if (filters.max) query = query.lte("price", filters.max);
 
-    // Taken rooms stay visible (greyed out) for 7 days, then drop off.
-    // Rooms not confirmed for 14 days hide until Rhema confirms them.
-    query = query.or(visibleFilter(hasConfirmed));
+      // Taken rooms stay visible (greyed out) for 7 days, then drop off.
+      // Rooms not confirmed for 14 days hide until Rhema confirms them.
+      query = query.or(visibleFilter(hasConfirmed));
 
-    // Taken rooms always go to the bottom.
-    query = query.order("status", { ascending: true });
-    if (filters.sort === "price") query = query.order("price", { ascending: true });
-    else if (filters.sort === "new") query = query.order("created_at", { ascending: false });
-    else query = query.order("distance_km", { ascending: true, nullsFirst: false }).order("price", { ascending: true });
+      // Taken rooms always go to the bottom.
+      query = query.order("status", { ascending: true });
+      if (filters.sort === "price") query = query.order("price", { ascending: true });
+      else if (filters.sort === "new") query = query.order("created_at", { ascending: false });
+      else query = query.order("distance_km", { ascending: true, nullsFirst: false }).order("price", { ascending: true });
 
-    return query.limit(limit) as unknown as Result<Row[]>;
-  });
+      return query.limit(limit) as unknown as Result<Row[]>;
+    });
+  let { data, error } = await run(true);
+  if (error?.code === "42703" && filters.location) ({ data, error } = await run(false));
   if (error) throw new Error(`Couldn't load rooms: ${error.message}`);
   return (data ?? []).map(shape);
 }
@@ -257,7 +279,7 @@ export async function moreNearby(
   return { label, area: listing.area, rooms };
 }
 
-export type AreaSummary = { area: string; campus: Campus; count: number; cover: string | null; minPrice: number };
+export type AreaSummary = { area: string; campus: Campus; location: string | null; count: number; cover: string | null; minPrice: number };
 
 // Areas that currently have rooms students can see, busiest first, each
 // with a cover photo. Powers the "Where?" dropdown and the Browse row.
@@ -271,8 +293,9 @@ export async function listAreas(): Promise<AreaSummary[]> {
     if (found) {
       found.count += 1;
       found.minPrice = Math.min(found.minPrice, r.price);
-    } else byArea.set(key, { area: r.area.trim(), campus: r.campus, count: 1, cover: r.photos[0] ?? null, minPrice: r.price });
+    } else byArea.set(key, { area: r.area.trim(), campus: r.campus, location: r.location, count: 1, cover: r.photos[0] ?? null, minPrice: r.price });
   }
   return [...byArea.values()].sort((a, b) => b.count - a.count || a.area.localeCompare(b.area));
   }
-             
+
+    
