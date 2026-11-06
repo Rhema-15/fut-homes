@@ -8,6 +8,7 @@ import type { FormState } from "@/lib/form-utils";
 import { parsePost } from "@/lib/parse-post";
 import { matchingShots, photoHash } from "@/lib/image-hash";
 import { photoUrl } from "@/lib/options";
+import { LOCATIONS } from "@/lib/locations";
 
 const HASH_KEY = "futhomes:photo-hashes";
 
