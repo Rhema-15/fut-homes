@@ -187,5 +187,4 @@ export default async function EditListingPage({ params, searchParams }: PageProp
       </form>
     </div>
   );
-          }
-            
+}
