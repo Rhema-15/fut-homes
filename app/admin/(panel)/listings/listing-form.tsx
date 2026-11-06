@@ -56,6 +56,7 @@ export type ListingDefaults = {
   caution_fee: number | null;
   roommate_gender?: string | null;
   rent_months?: number | null;
+  location?: string | null;
   amenities: string[];
   description: string | null;
   video_path: string | null;
@@ -385,6 +386,17 @@ export default function ListingForm({
             <option value="female">Females only</option>
             <option value="male">Males only</option>
             <option value="any">Any gender</option>
+          </select>
+        </label>
+                <label className="flex flex-col gap-1 text-sm">
+          Location (what students search by)
+          <select name="location" defaultValue={listing?.location ?? ""} className={input}>
+            <option value="">Not set</option>
+            {Object.entries(LOCATIONS).map(([value, l]) => (
+              <option key={value} value={value}>
+                {l.full}
+              </option>
+            ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm">
